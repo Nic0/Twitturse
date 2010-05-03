@@ -4,6 +4,8 @@
 #include <errno.h>
 
 #include <curl/curl.h>
+#include <libxml/tree.h>
+#include <libxml/xpath.h>
 
 #include "utils.h"
 
@@ -11,6 +13,23 @@
         "%s:%d Error (%d) : %s\n", \
         __FILE__, __LINE__, \
         errno, strerror(errno))
+/*
+typedef struct status_t
+{
+    char    *pseudo;
+    char    *text;
+    struct   status_t *next;
+    struct   status_t *prev;
+} status_t;
+
+status_t * 
+initStatus (status_t *status)
+{
+    status->pseudo = NULL;
+    status->text = NULL;
+    status->next = (maloc sizeof(status_t));
+    status->prev = (maloc sizeof(status_t));
+}*/
 
 char *
 get_URL (const char *url)
@@ -54,13 +73,106 @@ get_URL (const char *url)
     }
 }
 
+
+void 
+proceed (xmlNodePtr node)
+{
+    if ((node->type == XML_TEXT_NODE) || (node->type == XML_CDATA_SECTION_NODE)) {
+        xmlChar *path = xmlGetNodePath (node);
+        //const xmlChar *name;
+        //name = "text";
+
+        //if (xmlGetProp(node, name)) {
+            //printf ("name: %s\n", node->name);
+                //&& strcmp (node->parent->name, "status") != NULL)
+                //printf ("%s -> '%s\n", path, node->content ? (char *) node->content : "(null)");
+            //if ((!strcmp (node->name, "text"))  &&
+                //(!strcmp (node->next->name, "text"))) 
+                printf ("%s -> '%s' (%s)\n", path, node->content, node->name);
+            
+            xmlFree (path);
+    }
+
+    
+}
+
+
+void
+traverse (xmlNodePtr node)
+{   
+    xmlNodePtr n = NULL;
+    for (n = node; n; n = n->next) {
+        if ((n->type == XML_ELEMENT_NODE) && (n->children)) {
+            //proceed(n);
+            traverse (n->children);
+        }
+        proceed(n);
+
+        //printf ("attr:%s\n", n->name);
+        //printf ("cont:%s\n", n->content);
+        /*xmlChar *name_text = "text";
+
+        if (n->name == name_text)
+            printf ("tweet:%s\n", n->content);*/
+    }
+}
+
+static void
+print_element_names(xmlNode * a_node)
+{
+    xmlNode *cur_node = NULL;
+
+
+    for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+    
+        if (cur_node->parent != NULL) { 
+        
+            
+            if (cur_node->type == XML_TEXT_NODE 
+                 && strcmp(cur_node->parent->name, "screen_name") == 0) {
+                printf ("<%s>\t", cur_node->content);
+            }
+            
+            if (cur_node->type == XML_TEXT_NODE 
+                 && strcmp(cur_node->parent->name, "text") == 0) {
+                printf ("%s\n", cur_node->content);
+            }
+
+        }
+
+        print_element_names(cur_node->children);
+    }
+}
+
+
+
 int main (void)
 {
     char *data;
     data = get_URL ("https://api.twitter.com/statuses/home_timeline.xml");
+    //data = get_URL ("http://search.twitter.com/search.atom?q=%23Archlinux");
 
-    if (data != NULL) {
-        printf ("%s", data);
+    xmlDocPtr xmldoc;
+    xmlNode *xmlroot = NULL;
+
+    if ((xmldoc = xmlParseMemory (data, strlen(data))) == NULL) {
+        ERROR;
+        return EXIT_FAILURE;
     }
+
+    if ((xmlroot = xmlDocGetRootElement (xmldoc)) == NULL) {
+        fprintf (stderr, "Le document est vide\n");
+        xmlFreeDoc (xmldoc);
+        return EXIT_FAILURE;
+    }
+
+        //printf ("%s", data);
+    
+    //traverse (xmlroot);
+    //printf("root:%s\n", xmlroot->name);
+    print_element_names(xmlroot);
+    
+    xmlFreeDoc (xmldoc);
+    xmlCleanupParser();    
     return EXIT_SUCCESS;
 }
