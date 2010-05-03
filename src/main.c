@@ -12,11 +12,11 @@
         "%s:%d Error (%d) : %s\n", \
         __FILE__, __LINE__, \
         errno, strerror(errno))
-/*
+
 typedef struct status_t
 {
-    char    *pseudo;
-    char    *text;
+    xmlChar *pseudo;
+    xmlChar *text;
     struct   status_t *next;
     struct   status_t *prev;
 } status_t;
@@ -26,11 +26,11 @@ initStatus (status_t *status)
 {
     status->pseudo = NULL;
     status->text = NULL;
-    status->next = (maloc sizeof(status_t));
-    status->prev = (maloc sizeof(status_t));
-}*/
+    status->next = malloc (sizeof(status_t));
+    status->prev = malloc (sizeof(status_t));
+}
 
-static void print_element_names (xmlNode *a_node)
+/*static void print_element_names (xmlNode *a_node)
 {
     xmlNode *cur_node = NULL;
 
@@ -46,6 +46,25 @@ static void print_element_names (xmlNode *a_node)
                 printf ("%s\n", cur_node->content);
         }
         print_element_names(cur_node->children);
+    }
+}*/
+
+static void print_element_names (xmlNode *a_node)
+{
+    xmlNode *cur_node = NULL;
+
+    for (cur_node = a_node; cur_node; cur_node = cur_node->children) {
+    
+        if (cur_node->parent != NULL) { 
+            if (cur_node->type == XML_TEXT_NODE 
+                 && strcmp(cur_node->parent->name, "screen_name") == 0)
+                printf ("<%s>\t", cur_node->content);
+
+            if (cur_node->type == XML_TEXT_NODE 
+                 && strcmp(cur_node->parent->name, "text") == 0)
+                printf ("%s\n", cur_node->content);
+        }
+        print_element_names(cur_node->next);
     }
 }
 
