@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
@@ -75,6 +76,10 @@ getNewStatuses (xmlNode *a_node, statuses_t *statuses,
 
             if (cur_node->type == XML_TEXT_NODE 
                  && strcmp(cur_node->parent->name, "text") == 0) {
+                    if (statuses->count != 0)
+                        if (statuses->first->text == cur_node->content)
+                            break;
+
 
                     cur_status->text = cur_node->content;
             }
@@ -115,7 +120,7 @@ concatStatuses (statuses_t *statuses, statuses_t *tmp_statuses)
     } else if (statuses->count == 0 && tmp_statuses->count != 0) {
         *statuses = *tmp_statuses;
     }
-        /* TODO free tmp_statuses   */
+    free(tmp_statuses);
 }
 
 void
@@ -166,8 +171,13 @@ main (void)
     getNewStatuses(xmlroot, statuses, cur_status, tmp_statuses);
     concatStatuses(statuses, tmp_statuses);
 
-    printStatuses(statuses);
+        
+    while (1) {
+        printStatuses(statuses);
+        sleep (600);
+    }
     
+    free(statuses);
     xmlFreeDoc (xmldoc);
     xmlCleanupParser();
     return EXIT_SUCCESS;
