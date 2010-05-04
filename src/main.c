@@ -69,38 +69,35 @@ getStatuses (xmlNode *a_node, statuses_t *statuses, status_t *cur_status)
 {
     xmlNode     *cur_node   = NULL;
 
-    for (cur_node = a_node; cur_node; cur_node = cur_node->children) {
-
-            if (strcmp(cur_node->name, "screen_name") == 0) {
-                    cur_status->pseudo = cur_node->children->content;
-                    //printf ("<%s>\t", cur_node->content);
-            }
+    for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
 
             if (cur_node->type == XML_TEXT_NODE 
                  && strcmp(cur_node->parent->name, "text") == 0) {
 
                     cur_status->text = cur_node->content;
-
-                    status_t *node_status;
-                    if ((node_status = initStatus(node_status)) == NULL)
-                        ERROR;
-                    *node_status = *cur_status;
-
-                    if(statuses->count == 0) {
-                        statuses->last = node_status;
-                        statuses->first = node_status;
-                    } else {
-                        statuses->last->next = node_status;
-                        statuses->last = node_status;
-                    }
-
-                    cur_status = initStatus(cur_status);
-                    statuses->count++;   
-
-                    //printf ("%s\n", cur_node->content);
             }
 
-        getStatuses(cur_node->next, statuses, cur_status);
+            if (strcmp(cur_node->name, "screen_name") == 0) {
+                cur_status->pseudo = cur_node->children->content;
+
+                status_t *node_status;
+                if ((node_status = initStatus(node_status)) == NULL)
+                    ERROR;
+                *node_status = *cur_status;
+
+                if (statuses->count == 0) {
+                    statuses->last = node_status;
+                    statuses->first = node_status;
+                } else {
+                    statuses->last->next = node_status;
+                    node_status->prev = statuses->last;
+                    statuses->last = node_status;
+                }
+                cur_status = initStatus(cur_status);
+                statuses->count++;
+            }
+
+        getStatuses(cur_node->children, statuses, cur_status);
     }
 }
 
@@ -108,11 +105,11 @@ void
 printStatuses (statuses_t *statuses)
 {
     status_t *status = NULL;
-    status = statuses->first;
+    status = statuses->last;
     while (1) {
         printf("<%s>\t%s\n", status->pseudo, status->text);
-        if (status->next != NULL)
-            status = status->next;
+        if (status->prev != NULL)
+            status = status->prev;
         else
             break;
     }
