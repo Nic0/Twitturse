@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.3
+*       Twitturse   v 0.0.4
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -65,10 +65,12 @@ initStatuses (statuses_t *statuses)
 }
 
 static void 
-getStatuses (xmlNode *a_node, statuses_t *statuses, status_t *cur_status)
+getNewStatuses (xmlNode *a_node, statuses_t *statuses, 
+                status_t *cur_status, statuses_t *tmp_statuses)
 {
     xmlNode     *cur_node   = NULL;
 
+        //ajout dans une liste chainée tmp
     for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
 
             if (cur_node->type == XML_TEXT_NODE 
@@ -85,20 +87,35 @@ getStatuses (xmlNode *a_node, statuses_t *statuses, status_t *cur_status)
                     ERROR;
                 *node_status = *cur_status;
 
-                if (statuses->count == 0) {
-                    statuses->last = node_status;
-                    statuses->first = node_status;
+                if (tmp_statuses->count == 0) {
+                    tmp_statuses->last = node_status;
+                    tmp_statuses->first = node_status;
                 } else {
-                    statuses->last->next = node_status;
-                    node_status->prev = statuses->last;
-                    statuses->last = node_status;
+                    tmp_statuses->last->next = node_status;
+                    node_status->prev = tmp_statuses->last;
+                    tmp_statuses->last = node_status;
                 }
                 cur_status = initStatus(cur_status);
-                statuses->count++;
+                tmp_statuses->count++;
             }
 
-        getStatuses(cur_node->children, statuses, cur_status);
+        getNewStatuses(cur_node->children, statuses, cur_status, tmp_statuses);
     }
+}
+
+static void 
+concatStatuses (statuses_t *statuses, statuses_t *tmp_statuses)
+{
+
+    if (statuses->count != 0 && tmp_statuses->count != 0) {
+        tmp_statuses->last->next = statuses->first;
+        statuses->first->prev = tmp_statuses->last;
+        statuses->first = tmp_statuses->first;
+        statuses->count = statuses->count + tmp_statuses->count;
+    } else if (statuses->count == 0 && tmp_statuses->count != 0) {
+        *statuses = *tmp_statuses;
+    }
+        /* TODO free tmp_statuses   */
 }
 
 void
@@ -118,10 +135,11 @@ printStatuses (statuses_t *statuses)
 int 
 main (void)
 {
-    static char *data       = NULL;
-    xmlDoc      *xmldoc     = NULL;
-    xmlNode     *xmlroot    = NULL;
-    statuses_t  *statuses   = NULL;
+    static char *data           = NULL;
+    xmlDoc      *xmldoc         = NULL;
+    xmlNode     *xmlroot        = NULL;
+    statuses_t  *statuses       = NULL;
+    statuses_t  *tmp_statuses   = NULL;
 
     data = get_URL ("https://api.twitter.com/statuses/home_timeline.xml");
 
@@ -136,14 +154,17 @@ main (void)
         return EXIT_FAILURE;
     }
 
-    if ((statuses = initStatuses(statuses)) == NULL) {
+    if ((statuses = initStatuses(statuses)) == NULL ||
+        (tmp_statuses = initStatuses(tmp_statuses)) == NULL) {
         ERROR;
         return EXIT_FAILURE;
     }
     
     status_t *cur_status = NULL;
     cur_status = initStatus(cur_status);
-    getStatuses(xmlroot, statuses, cur_status);
+
+    getNewStatuses(xmlroot, statuses, cur_status, tmp_statuses);
+    concatStatuses(statuses, tmp_statuses);
 
     printStatuses(statuses);
     
