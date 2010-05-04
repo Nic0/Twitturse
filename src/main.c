@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.1
+*       Twitturse   v 0.0.2
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -71,9 +71,8 @@ getStatuses (xmlNode *a_node, statuses_t *statuses, status_t *cur_status)
 
     for (cur_node = a_node; cur_node; cur_node = cur_node->children) {
 
-            if (cur_node->type == XML_TEXT_NODE 
-                 && strcmp(cur_node->parent->name, "screen_name") == 0) {
-                    cur_status->pseudo = cur_node->content;
+            if (strcmp(cur_node->name, "screen_name") == 0) {
+                    cur_status->pseudo = cur_node->children->content;
                     //printf ("<%s>\t", cur_node->content);
             }
 
@@ -110,9 +109,12 @@ printStatuses (statuses_t *statuses)
 {
     status_t *status = NULL;
     status = statuses->first;
-    while (status->next != NULL) {
+    while (1) {
         printf("<%s>\t%s\n", status->pseudo, status->text);
-        status = status->next;
+        if (status->next != NULL)
+            status = status->next;
+        else
+            break;
     }
 }
 
