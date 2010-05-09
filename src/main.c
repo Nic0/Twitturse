@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.6
+*       Twitturse   v 0.0.7
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -180,7 +180,7 @@ printStatuses (statuses_t *statuses)
 
 int 
 main (void)
-{
+{/*
     statuses_t * statuses       = NULL;
     if ((statuses = initStatuses(statuses)) == NULL) {
         ERROR;
@@ -205,7 +205,16 @@ main (void)
         free(data);
         //xmlCleanupParser();
         sleep(5);
-    }
-    freeStatuses(statuses);
+    }*/
+
+   puts("tweet>");
+   char tweet[141] = {0};
+   gets(tweet);
+   printf("your tweet:%s", tweet);
+    post_status (tweet);
+
+
+
+    //freeStatuses(statuses);
     return EXIT_SUCCESS;
 }
