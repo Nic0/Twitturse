@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.4
+*       Twitturse   v 0.0.5
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -16,7 +16,9 @@
 #include <unistd.h>
 
 #include <libxml/tree.h>
+#include <libxml/parser.h>
 #include <libxml/xpath.h>
+#include <libxml/xpathInternals.h>
 
 #include "curl.h"
 
@@ -65,47 +67,62 @@ initStatuses (statuses_t *statuses)
     return statuses;
 }
 
-static void 
-getNewStatuses (xmlNode *a_node, statuses_t *statuses, 
-                status_t *cur_status, statuses_t *tmp_statuses)
+statuses_t * 
+getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses, statuses_t *tmp_statuses)
 {
-    xmlNode     *cur_node   = NULL;
+    xmlXPathContextPtr xpathCtx = NULL;
+    
+    xmlXPathObjectPtr pseudo = NULL;
+    xmlXPathObjectPtr text = NULL;
 
-        //ajout dans une liste chainée tmp
-    for (cur_node = a_node; cur_node; cur_node = cur_node->next) {
+    xpathCtx = xmlXPathNewContext(xmldoc);
+    if (xmldoc == NULL) {
+        ERROR;
+        return NULL;
+    }
 
-            if (cur_node->type == XML_TEXT_NODE 
-                 && strcmp(cur_node->parent->name, "text") == 0) {
-                    if (statuses->count != 0)
-                        if (statuses->first->text == cur_node->content)
-                            break;
+    text = xmlXPathEvalExpression("/statuses/status/text/text()", xpathCtx);
+    if (text == NULL) {
+        ERROR;
+        return NULL;
+    }
 
+    pseudo = xmlXPathEvalExpression("/statuses/status/user/screen_name/text()", xpathCtx);
+    if (pseudo == NULL) {
+        ERROR;
+        return NULL;
+    }
 
-                    cur_status->text = cur_node->content;
-            }
+    int size = 0;
+    int i;
 
-            if (strcmp(cur_node->name, "screen_name") == 0) {
-                cur_status->pseudo = cur_node->children->content;
+    size = text->nodesetval ? text->nodesetval->nodeNr : 0;
 
-                status_t *node_status;
-                if ((node_status = initStatus(node_status)) == NULL)
-                    ERROR;
-                *node_status = *cur_status;
+    for (i = 0; i < size; ++i) {
+        //printf ("<%s>\t", pseudo->nodesetval->nodeTab[i]->content);
+        //printf ("%s\n", text->nodesetval->nodeTab[i]->content);
+        
+        if(statuses->count != 0)
+            if(text->nodesetval->nodeTab[i]->content != statuses->first->text)
+                return tmp_statuses;
+
+                status_t *cur_status = NULL;
+                cur_status = initStatus(cur_status);
+
+                cur_status->text = text->nodesetval->nodeTab[i]->content;
+                cur_status->pseudo = pseudo->nodesetval->nodeTab[i]->content;
 
                 if (tmp_statuses->count == 0) {
-                    tmp_statuses->last = node_status;
-                    tmp_statuses->first = node_status;
+                    tmp_statuses->last = cur_status;
+                    tmp_statuses->first = cur_status;
                 } else {
-                    tmp_statuses->last->next = node_status;
-                    node_status->prev = tmp_statuses->last;
-                    tmp_statuses->last = node_status;
+                    tmp_statuses->last->next = cur_status;
+                    cur_status->prev = tmp_statuses->last;
+                    tmp_statuses->last = cur_status;
                 }
-                cur_status = initStatus(cur_status);
                 tmp_statuses->count++;
-            }
-
-        getNewStatuses(cur_node->children, statuses, cur_status, tmp_statuses);
     }
+    return tmp_statuses;
 }
 
 static void 
@@ -120,7 +137,6 @@ concatStatuses (statuses_t *statuses, statuses_t *tmp_statuses)
     } else if (statuses->count == 0 && tmp_statuses->count != 0) {
         *statuses = *tmp_statuses;
     }
-    free(tmp_statuses);
 }
 
 void
@@ -140,10 +156,15 @@ printStatuses (statuses_t *statuses)
 int 
 main (void)
 {
+    statuses_t * statuses       = NULL;
+    if ((statuses = initStatuses(statuses)) == NULL) {
+        ERROR;
+        return EXIT_FAILURE;
+    }
+
     static char *data           = NULL;
     xmlDoc      *xmldoc         = NULL;
     xmlNode     *xmlroot        = NULL;
-    statuses_t  *statuses       = NULL;
     statuses_t  *tmp_statuses   = NULL;
 
     data = get_URL ("https://api.twitter.com/statuses/home_timeline.xml");
@@ -159,26 +180,24 @@ main (void)
         return EXIT_FAILURE;
     }
 
-    if ((statuses = initStatuses(statuses)) == NULL ||
-        (tmp_statuses = initStatuses(tmp_statuses)) == NULL) {
+    if ((tmp_statuses = initStatuses(tmp_statuses)) == NULL) {
         ERROR;
         return EXIT_FAILURE;
     }
     
-    status_t *cur_status = NULL;
-    cur_status = initStatus(cur_status);
+    xmlInitParser();
 
-    getNewStatuses(xmlroot, statuses, cur_status, tmp_statuses);
-    concatStatuses(statuses, tmp_statuses);
+    tmp_statuses = getNewStatuses(xmldoc, statuses, tmp_statuses);
 
-        
-    while (1) {
+    if (tmp_statuses->count != 0) {
+        concatStatuses(statuses, tmp_statuses);
         printStatuses(statuses);
-        sleep (600);
     }
-    
-    free(statuses);
+    free(tmp_statuses);
+    free(data);
     xmlFreeDoc (xmldoc);
     xmlCleanupParser();
+    xmlCleanupParser();
+    free(statuses);
     return EXIT_SUCCESS;
 }
