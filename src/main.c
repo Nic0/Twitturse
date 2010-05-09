@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.5
+*       Twitturse   v 0.0.6
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -29,7 +29,7 @@
 
 typedef struct status_t
 {
-    unsigned long    id;
+    xmlChar         *id;
     xmlChar         *pseudo;
     xmlChar         *text;
     struct status_t *next;
@@ -43,7 +43,7 @@ typedef struct statuses_t
     int          count;
 } statuses_t;
 
-status_t * 
+status_t* 
 initStatus (status_t *status)
 {
     if ((status = malloc (sizeof(status_t))) == NULL)
@@ -56,7 +56,14 @@ initStatus (status_t *status)
     return status;
 }
 
-statuses_t *
+void freeStatuses (statuses_t *statuses)
+{
+    free(statuses->last);
+    free(statuses->first);
+    free(statuses);
+}
+
+statuses_t*
 initStatuses (statuses_t *statuses)
 {
     if ((statuses = malloc (sizeof(statuses_t))) == NULL)
@@ -67,27 +74,43 @@ initStatuses (statuses_t *statuses)
     return statuses;
 }
 
-statuses_t * 
-getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses, statuses_t *tmp_statuses)
+statuses_t* 
+getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses)
 {
     xmlXPathContextPtr xpathCtx = NULL;
     
+    xmlXPathObjectPtr id    = NULL;
     xmlXPathObjectPtr pseudo = NULL;
     xmlXPathObjectPtr text = NULL;
+
+    statuses_t * tmp_statuses;
+    tmp_statuses = initStatuses(tmp_statuses);
 
     xpathCtx = xmlXPathNewContext(xmldoc);
     if (xmldoc == NULL) {
         ERROR;
         return NULL;
     }
+    xmlChar *idpath = NULL;
+    idpath = "/statuses/status/id/text()";
+    xmlChar *textpath = NULL;
+    textpath = "/statuses/status/text/text()";
+    xmlChar *pseudopath = NULL;
+    pseudopath = "/statuses/status/user/screen_name/text()";
 
-    text = xmlXPathEvalExpression("/statuses/status/text/text()", xpathCtx);
+    id = xmlXPathEvalExpression(idpath, xpathCtx);
+    if (id == NULL) {
+        ERROR;
+        return NULL;
+    }
+    
+    text = xmlXPathEvalExpression(textpath, xpathCtx);
     if (text == NULL) {
         ERROR;
         return NULL;
     }
 
-    pseudo = xmlXPathEvalExpression("/statuses/status/user/screen_name/text()", xpathCtx);
+    pseudo = xmlXPathEvalExpression(pseudopath, xpathCtx);
     if (pseudo == NULL) {
         ERROR;
         return NULL;
@@ -101,16 +124,17 @@ getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses, statuses_t *tmp_statuses)
     for (i = 0; i < size; ++i) {
         //printf ("<%s>\t", pseudo->nodesetval->nodeTab[i]->content);
         //printf ("%s\n", text->nodesetval->nodeTab[i]->content);
-        
         if(statuses->count != 0)
-            if(text->nodesetval->nodeTab[i]->content != statuses->first->text)
-                return tmp_statuses;
+            if((xmlStrcmp(id->nodesetval->nodeTab[i]->content, 
+                statuses->first->id)) == 0)
+                break;
 
                 status_t *cur_status = NULL;
                 cur_status = initStatus(cur_status);
-
-                cur_status->text = text->nodesetval->nodeTab[i]->content;
-                cur_status->pseudo = pseudo->nodesetval->nodeTab[i]->content;
+                
+                cur_status->id = strdup(id->nodesetval->nodeTab[i]->content);
+                cur_status->text = strdup(text->nodesetval->nodeTab[i]->content);
+                cur_status->pseudo = strdup(pseudo->nodesetval->nodeTab[i]->content);
 
                 if (tmp_statuses->count == 0) {
                     tmp_statuses->last = cur_status;
@@ -122,21 +146,22 @@ getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses, statuses_t *tmp_statuses)
                 }
                 tmp_statuses->count++;
     }
-    return tmp_statuses;
-}
 
-static void 
-concatStatuses (statuses_t *statuses, statuses_t *tmp_statuses)
-{
-
-    if (statuses->count != 0 && tmp_statuses->count != 0) {
+    if(statuses->count == 0 && tmp_statuses->count != 0) {
+        *statuses = *tmp_statuses;
+    } else if (statuses->count !=0 && tmp_statuses->count != 0) {
         tmp_statuses->last->next = statuses->first;
         statuses->first->prev = tmp_statuses->last;
         statuses->first = tmp_statuses->first;
         statuses->count = statuses->count + tmp_statuses->count;
-    } else if (statuses->count == 0 && tmp_statuses->count != 0) {
-        *statuses = *tmp_statuses;
     }
+    
+    xmlXPathFreeObject(pseudo);
+    xmlXPathFreeObject(text);
+    xmlXPathFreeObject(id);
+    xmlXPathFreeContext(xpathCtx);
+    xmlFreeDoc(xmldoc);
+    return statuses;
 }
 
 void
@@ -145,7 +170,7 @@ printStatuses (statuses_t *statuses)
     status_t *status = NULL;
     status = statuses->last;
     while (1) {
-        printf("<%s>\t%s\n", status->pseudo, status->text);
+        printf("<id:%s>\t<%s>\t%s\n", status->id, status->pseudo, status->text);
         if (status->prev != NULL)
             status = status->prev;
         else
@@ -161,43 +186,26 @@ main (void)
         ERROR;
         return EXIT_FAILURE;
     }
+        xmlInitParser();
 
-    static char *data           = NULL;
-    xmlDoc      *xmldoc         = NULL;
-    xmlNode     *xmlroot        = NULL;
-    statuses_t  *tmp_statuses   = NULL;
+    while(1) {
+        char    *data           = NULL;
+        xmlDoc  *xmldoc         = NULL;
 
-    data = get_URL ("https://api.twitter.com/statuses/home_timeline.xml");
+        data = get_URL ("http://api.twitter.com/statuses/home_timeline.xml");
 
-    if ((xmldoc = xmlParseMemory (data, strlen(data))) == NULL) {
-        ERROR;
-        return EXIT_FAILURE;
-    }
+        if ((xmldoc = xmlParseMemory (data, strlen(data))) == NULL) {
+            ERROR;
+            return EXIT_FAILURE;
+        }
 
-    if ((xmlroot = xmlDocGetRootElement (xmldoc)) == NULL) {
-        fprintf (stderr, "Le document est vide\n");
-        xmlFreeDoc (xmldoc);
-        return EXIT_FAILURE;
-    }
-
-    if ((tmp_statuses = initStatuses(tmp_statuses)) == NULL) {
-        ERROR;
-        return EXIT_FAILURE;
-    }
-    
-    xmlInitParser();
-
-    tmp_statuses = getNewStatuses(xmldoc, statuses, tmp_statuses);
-
-    if (tmp_statuses->count != 0) {
-        concatStatuses(statuses, tmp_statuses);
+        statuses = getNewStatuses(xmldoc, statuses);
         printStatuses(statuses);
+    
+        free(data);
+        //xmlCleanupParser();
+        sleep(5);
     }
-    free(tmp_statuses);
-    free(data);
-    xmlFreeDoc (xmldoc);
-    xmlCleanupParser();
-    xmlCleanupParser();
-    free(statuses);
+    freeStatuses(statuses);
     return EXIT_SUCCESS;
 }
