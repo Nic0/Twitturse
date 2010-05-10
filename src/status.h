@@ -4,7 +4,7 @@
 #include "init.h"
 
 void *
-getNewStatuses (data_t *data);
+getNewStatuses (void *data);
 
 void
 printStatuses (statuses_t *statuses);

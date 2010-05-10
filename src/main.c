@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.9
+*       Twitturse   v 0.0.10
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -26,11 +26,14 @@
 #include "status.h"
 #include "config.h"
 #include "curl.h"
+#include "ncurse.h"
 
 #define ERROR fprintf (stderr, \
         "%s:%d Error (%d) : %s\n", \
         __FILE__, __LINE__, \
         errno, strerror(errno))
+
+pthread_mutex_t mutex;
 
 int 
 main (void)
@@ -50,6 +53,12 @@ main (void)
             ERROR;
             return EXIT_FAILURE;
         }
+/*
+        pthread_t pidCurse;
+        if (pthread_create(&pidCurse, NULL, ncurseApplication, data) != 0) {
+            ERROR;
+            return EXIT_FAILURE;
+        }*/
         
 /*
    puts("tweet>");
@@ -59,6 +68,7 @@ main (void)
     post_status (tweet);*/
 
     pthread_join (pidStatuses, NULL);
+    //pthread_join (pidCurse, NULL);
 
     freeStatuses(data->statuses);
     

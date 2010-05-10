@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <libxml/tree.h>
 #include <libxml/parser.h>
@@ -19,10 +20,12 @@
         __FILE__, __LINE__, \
         errno, strerror(errno))
 
+extern pthread_mutex_t mutex;
 
 void *
-getNewStatuses (data_t *data)
+getNewStatuses (void *arg)
 {
+    data_t *data = arg;
     while (1) {
     char    *urldoc = NULL;
     xmlDoc  *xmldoc = NULL;
@@ -98,6 +101,7 @@ getNewStatuses (data_t *data)
                 tmp_statuses->count++;
     }
 
+pthread_mutex_lock(&mutex);
     if(data->statuses->count == 0 && tmp_statuses->count != 0) {
         *data->statuses = *tmp_statuses;
     } else if (data->statuses->count !=0 && tmp_statuses->count != 0) {
@@ -106,14 +110,15 @@ getNewStatuses (data_t *data)
         data->statuses->first = tmp_statuses->first;
         data->statuses->count = data->statuses->count + tmp_statuses->count;
     }
-    
+pthread_mutex_unlock(&mutex);
+
     xmlXPathFreeObject(pseudo);
     xmlXPathFreeObject(text);
     xmlXPathFreeObject(id);
     xmlXPathFreeContext(xpathCtx);
     xmlFreeDoc(xmldoc);
     printStatuses(data->statuses);
-    sleep(5);
+    sleep(20);
     }
 }
 
@@ -123,7 +128,9 @@ printStatuses (statuses_t *statuses)
     status_t *status = NULL;
     status = statuses->last;
     while (1) {
-        printf("<id:%s>\t<%s>\t%s\n", status->id, status->pseudo, status->text);
+        //printf("<id:%s>\t<%s>\t%s\n", status->id, status->pseudo, status->text);
+        printf("<%s>\t%s\n", status->pseudo, status->text);
+        
         if (status->prev != NULL)
             status = status->prev;
         else
