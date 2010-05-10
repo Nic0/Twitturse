@@ -8,6 +8,7 @@
 #include <curl/easy.h>
 
 #include "utils.h"
+#include "config.h"
 #include "curl.h"
 
 #define ERROR fprintf (stderr, \
@@ -17,7 +18,7 @@
 
 
 char *
-get_URL (const char *url)
+get_URL (const char *url, config_t *config)
 {
     CURL *curl = NULL;
     CURLcode result;
@@ -37,8 +38,8 @@ get_URL (const char *url)
         curl_easy_setopt (curl, CURLOPT_SSL_VERIFYHOST, 0);
         //curl_easy_setopt (curl, CURLOPT_USERNAME, "nic0sphere");
         //curl_easy_setopt (curl, CURLOPT_PASSWORD, "6akw92c");
-        curl_easy_setopt (curl, CURLOPT_USERNAME, "twitturse");
-        curl_easy_setopt (curl, CURLOPT_PASSWORD, "58auau59");
+        curl_easy_setopt (curl, CURLOPT_USERNAME, config->login);
+        curl_easy_setopt (curl, CURLOPT_PASSWORD, config->passwd);
         curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, str_append);
         curl_easy_setopt (curl, CURLOPT_WRITEDATA, str);
 

@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.7
+*       Twitturse   v 0.0.8
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -20,6 +20,7 @@
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
 
+#include "config.h"
 #include "curl.h"
 
 #define ERROR fprintf (stderr, \
@@ -43,6 +44,13 @@ typedef struct statuses_t
     int          count;
 } statuses_t;
 
+typedef struct
+{
+    statuses_t  *statuses;
+    config_t    *config;
+} data_t;
+
+
 status_t* 
 initStatus (status_t *status)
 {
@@ -54,6 +62,16 @@ initStatus (status_t *status)
     status->next    = NULL;
     status->prev    = NULL;
     return status;
+}
+
+config_t *
+initConfig (config_t *config)
+{
+    if ((config = malloc(sizeof(config_t))) == NULL)
+        return NULL;
+    config->login   = NULL;
+    config->passwd  = NULL;
+    return config;
 }
 
 void freeStatuses (statuses_t *statuses)
@@ -74,9 +92,33 @@ initStatuses (statuses_t *statuses)
     return statuses;
 }
 
-statuses_t* 
-getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses)
+data_t *
+initData (data_t *data)
 {
+    if ((data = malloc (sizeof(data_t))) == NULL)
+        return NULL;
+    if ((data->statuses = initStatuses(data->statuses)) == NULL)
+        return NULL;
+    if ((data->config = initConfig(data->config)) == NULL)
+        return NULL;
+    return data;
+}
+
+void 
+getNewStatuses (data_t *data)
+{
+    
+    char    *urldoc = NULL;
+    xmlDoc  *xmldoc = NULL;
+    char    *url    = NULL;
+    url = "http://api.twitter.com/statuses/home_timeline.xml";
+    urldoc = get_URL (url, data->config);
+
+    if ((xmldoc = xmlParseMemory (urldoc, strlen(urldoc))) == NULL)
+        ERROR;
+
+    free(urldoc);
+
     xmlXPathContextPtr xpathCtx = NULL;
     
     xmlXPathObjectPtr id    = NULL;
@@ -87,10 +129,9 @@ getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses)
     tmp_statuses = initStatuses(tmp_statuses);
 
     xpathCtx = xmlXPathNewContext(xmldoc);
-    if (xmldoc == NULL) {
+    if (xmldoc == NULL)
         ERROR;
-        return NULL;
-    }
+    
     xmlChar *idpath = NULL;
     idpath = "/statuses/status/id/text()";
     xmlChar *textpath = NULL;
@@ -99,22 +140,16 @@ getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses)
     pseudopath = "/statuses/status/user/screen_name/text()";
 
     id = xmlXPathEvalExpression(idpath, xpathCtx);
-    if (id == NULL) {
+    if (id == NULL)
         ERROR;
-        return NULL;
-    }
     
     text = xmlXPathEvalExpression(textpath, xpathCtx);
-    if (text == NULL) {
+    if (text == NULL)
         ERROR;
-        return NULL;
-    }
 
     pseudo = xmlXPathEvalExpression(pseudopath, xpathCtx);
-    if (pseudo == NULL) {
+    if (pseudo == NULL)
         ERROR;
-        return NULL;
-    }
 
     int size = 0;
     int i;
@@ -124,9 +159,9 @@ getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses)
     for (i = 0; i < size; ++i) {
         //printf ("<%s>\t", pseudo->nodesetval->nodeTab[i]->content);
         //printf ("%s\n", text->nodesetval->nodeTab[i]->content);
-        if(statuses->count != 0)
+        if(data->statuses->count != 0)
             if((xmlStrcmp(id->nodesetval->nodeTab[i]->content, 
-                statuses->first->id)) == 0)
+                data->statuses->first->id)) == 0)
                 break;
 
                 status_t *cur_status = NULL;
@@ -147,13 +182,13 @@ getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses)
                 tmp_statuses->count++;
     }
 
-    if(statuses->count == 0 && tmp_statuses->count != 0) {
-        *statuses = *tmp_statuses;
-    } else if (statuses->count !=0 && tmp_statuses->count != 0) {
-        tmp_statuses->last->next = statuses->first;
-        statuses->first->prev = tmp_statuses->last;
-        statuses->first = tmp_statuses->first;
-        statuses->count = statuses->count + tmp_statuses->count;
+    if(data->statuses->count == 0 && tmp_statuses->count != 0) {
+        *data->statuses = *tmp_statuses;
+    } else if (data->statuses->count !=0 && tmp_statuses->count != 0) {
+        tmp_statuses->last->next = data->statuses->first;
+        data->statuses->first->prev = tmp_statuses->last;
+        data->statuses->first = tmp_statuses->first;
+        data->statuses->count = data->statuses->count + tmp_statuses->count;
     }
     
     xmlXPathFreeObject(pseudo);
@@ -161,7 +196,6 @@ getNewStatuses (xmlDoc *xmldoc, statuses_t *statuses)
     xmlXPathFreeObject(id);
     xmlXPathFreeContext(xpathCtx);
     xmlFreeDoc(xmldoc);
-    return statuses;
 }
 
 void
@@ -180,38 +214,30 @@ printStatuses (statuses_t *statuses)
 
 int 
 main (void)
-{/*
-    statuses_t * statuses       = NULL;
-    if ((statuses = initStatuses(statuses)) == NULL) {
+{
+    data_t *data = NULL;
+    if ((data = initData(data)) == NULL) {
         ERROR;
         return EXIT_FAILURE;
     }
+    if ((getConfiguration(data->config)) != 0)
+        return EXIT_FAILURE;
+
         xmlInitParser();
 
     while(1) {
-        char    *data           = NULL;
-        xmlDoc  *xmldoc         = NULL;
-
-        data = get_URL ("http://api.twitter.com/statuses/home_timeline.xml");
-
-        if ((xmldoc = xmlParseMemory (data, strlen(data))) == NULL) {
-            ERROR;
-            return EXIT_FAILURE;
-        }
-
-        statuses = getNewStatuses(xmldoc, statuses);
-        printStatuses(statuses);
+        getNewStatuses(data);
+        printStatuses(data->statuses);
     
-        free(data);
         //xmlCleanupParser();
         sleep(5);
-    }*/
-
+    }
+/*
    puts("tweet>");
    char tweet[141] = {0};
    gets(tweet);
    printf("your tweet:%s", tweet);
-    post_status (tweet);
+    post_status (tweet);*/
 
 
 
