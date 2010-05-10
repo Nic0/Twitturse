@@ -4,6 +4,7 @@
 #include <errno.h>
 
 #include "config.h"
+#include "init.h"
 #include "utils.h"
 
 #define MAXBUFF 512
