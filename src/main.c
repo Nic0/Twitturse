@@ -53,12 +53,12 @@ main (void)
             ERROR;
             return EXIT_FAILURE;
         }
-/*
+
         pthread_t pidCurse;
         if (pthread_create(&pidCurse, NULL, ncurseApplication, data) != 0) {
             ERROR;
             return EXIT_FAILURE;
-        }*/
+        }
         
 /*
    puts("tweet>");
@@ -68,7 +68,7 @@ main (void)
     post_status (tweet);*/
 
     pthread_join (pidStatuses, NULL);
-    //pthread_join (pidCurse, NULL);
+    pthread_join (pidCurse, NULL);
 
     freeStatuses(data->statuses);
     

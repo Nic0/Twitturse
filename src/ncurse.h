@@ -3,6 +3,8 @@
 
 #include "init.h"
 
+#include <ncurses.h>
+
 void *
 ncurseApplication (void *arg);
 
@@ -11,4 +13,7 @@ windowInit (void);
 
 void 
 windowBasic (data_t *data);
+
+WINDOW *
+create_statusWindow (int col, int row, data_t *data);
 #endif
