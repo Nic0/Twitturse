@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.8
+*       Twitturse   v 0.0.8-2
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -14,6 +14,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <libxml/tree.h>
 #include <libxml/parser.h>
@@ -104,10 +105,10 @@ initData (data_t *data)
     return data;
 }
 
-void 
+void *
 getNewStatuses (data_t *data)
 {
-    
+    while (1) {
     char    *urldoc = NULL;
     xmlDoc  *xmldoc = NULL;
     char    *url    = NULL;
@@ -196,6 +197,9 @@ getNewStatuses (data_t *data)
     xmlXPathFreeObject(id);
     xmlXPathFreeContext(xpathCtx);
     xmlFreeDoc(xmldoc);
+    printStatuses(data->statuses);
+    sleep(5);
+    }
 }
 
 void
@@ -225,13 +229,12 @@ main (void)
 
         xmlInitParser();
 
-    while(1) {
-        getNewStatuses(data);
-        printStatuses(data->statuses);
-    
-        //xmlCleanupParser();
-        sleep(5);
-    }
+        pthread_t pidStatuses;
+        if (pthread_create(&pidStatuses, NULL, getNewStatuses, data) != 0) {
+            ERROR;
+            return EXIT_FAILURE;
+        }
+        
 /*
    puts("tweet>");
    char tweet[141] = {0};
@@ -239,8 +242,9 @@ main (void)
    printf("your tweet:%s", tweet);
     post_status (tweet);*/
 
+    pthread_join (pidStatuses, NULL);
 
-
-    //freeStatuses(statuses);
+    freeStatuses(data->statuses);
+    
     return EXIT_SUCCESS;
 }
