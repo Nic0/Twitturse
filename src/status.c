@@ -117,7 +117,7 @@ pthread_mutex_unlock(&mutex);
     xmlXPathFreeObject(id);
     xmlXPathFreeContext(xpathCtx);
     xmlFreeDoc(xmldoc);
-    printStatuses(data->statuses);
+    //printStatuses(data->statuses);
     sleep(20);
     }
 }

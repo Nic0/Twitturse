@@ -16,4 +16,8 @@ windowBasic (data_t *data);
 
 WINDOW *
 create_statusWindow (int col, int row, data_t *data);
+
+WINDOW *
+update_statusWindow (WINDOW *local_win, int col, int row, data_t *data);
+
 #endif
