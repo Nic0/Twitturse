@@ -25,57 +25,44 @@
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 #define CTRLD   4
 
-char *choices[] = {
-        "Choice 1",
-        "Choice 2",
-        "Choice 3",
-        "Choice 4",
-        "Choice 5",
-        "Choice 6",
-        "Choice 7",
-        "Choice 8",
-        "Choice 9",
-        "Choice 10",
-        "Exit",
-        (char *)NULL,
-};
-
-
 extern pthread_mutex_t mutex;
 
 void *
 ncurseApplication (void *arg)
 {
     sleep(7);
-    data_t *data = arg;
 
-    ITEM **my_items = NULL;
-    int c = 0;
-    MENU * my_menu = NULL;
-        WINDOW *my_menu_win = NULL;
-        int n_choices = 0;
-        int i = 0;
+    ITEM       **my_items       = NULL;
+    MENU        *my_menu        = NULL;
+    WINDOW      *my_menu_win    = NULL;
+    status_t    *cur_status     = NULL;
+    cur_status = initStatus (cur_status);
+
+    int c           = 0;
+    int n_choices   = 0;
+    int row         = 0;
+    int col         = 0;
     
     windowInit();
-
-        int row = 0;
-        int col = 0;
-        getmaxyx(stdscr,row,col);
+    getmaxyx(stdscr,row,col);
 
 	/* Create items */
-        n_choices = ARRAY_SIZE(choices);
-        my_items = (ITEM **)calloc(n_choices, sizeof(ITEM *));
+        pthread_mutex_lock(&mutex);
         
-        status_t * cur_status = NULL;
-        cur_status = initStatus (cur_status);
+        data_t *data = arg;
+        my_items = (ITEM **)calloc(data->statuses->count, sizeof(ITEM *));
+        
         *cur_status = *data->statuses->last;
-
-        for(i = 0; i < n_choices; ++i) {
+        
+        int i;
+        for(i = 0; i < data->statuses->count; ++i) {
                 my_items[i] = new_item(cur_status->pseudo, cur_status->text);
                 cur_status = cur_status->prev;
         }
-
-	/* Crate menu */
+        pthread_mutex_unlock(&mutex);
+	
+    
+    /* Crate menu */
 	my_menu = new_menu((ITEM **)my_items);
 
 	/* Create the window to be associated with the menu */
@@ -84,15 +71,17 @@ ncurseApplication (void *arg)
      
 	/* Set main window and sub window */
         set_menu_win(my_menu, my_menu_win);
-        set_menu_sub(my_menu, derwin(my_menu_win, row-4, col-4, 3, 1));
-	set_menu_format(my_menu, row-4, 1);
-			
+        set_menu_sub(my_menu, derwin(my_menu_win, row-2, col-4, 3, 1));
+	    set_menu_format(my_menu, row-2, 1);
+		set_menu_fore(my_menu, COLOR_PAIR(2));
+
 	/* Set menu mark to the string " * " */
         set_menu_mark(my_menu, " > ");
 
 	/* Print a border around the main window and print a title */
         //box(my_menu_win, 0, 0);
-	print_in_middle(my_menu_win, 1, 0, 40, "Tweets", COLOR_PAIR(1));
+	//print_in_middle(my_menu_win, 1, 0, 40, "Tweets", COLOR_PAIR(1));
+    refresh();
 /*	mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
 	mvwhline(my_menu_win, 2, 1, ACS_HLINE, 50);
 	mvwaddch(my_menu_win, 2, 51, ACS_RTEE);*/
@@ -135,7 +124,7 @@ ncurseApplication (void *arg)
 
 void print_in_middle(WINDOW *win, int starty, int startx, int width, char *string, chtype color)
 {	
-
+/*
     int length, x, y;
 
 	float temp;
@@ -155,138 +144,20 @@ void print_in_middle(WINDOW *win, int starty, int startx, int width, char *strin
 	x = startx + (int)temp;
 	wattron(win, color);
 	mvwprintw(win, y, x, "%s", string);
-	wattroff(win, color);
-	refresh();
+	wattroff(win, color);*/
+	//refresh();
     
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 void windowInit (void)
 {
     initscr();
     keypad(stdscr, TRUE);
     start_color();
+    use_default_colors();
     cbreak();
     noecho();
-    init_pair(1, COLOR_RED, COLOR_BLACK);
-    init_pair(2, COLOR_CYAN, COLOR_BLACK);
-    //curs_set(1);
-}
-
-WINDOW *
-update_statusWindow (WINDOW *local_win, int col, int row, data_t *data)
-{
-    int rowstd = 0;
-    int colstd = 0;
-    getmaxyx(stdscr, rowstd, colstd);
-    //if (rowstd != row || colstd != col) {
-    //    local_win = create_statusWindow(colstd, rowstd, data);
-   // } else {
-
-    status_t *cur_status = NULL;
-    if ((cur_status = initStatus(cur_status)) == NULL)
-        ERROR;
-    if (data->statuses->first != NULL) {
-        *cur_status = *data->statuses->first;
-
-        int i;
-        for (i = row-2; i>0; i--) {
-
-        if (strlen (cur_status->text) > col-20)
-            i--;
-
-            wchar_t *buff1 = NULL;
-            wchar_t *buff2 = NULL;
-            buff1 = strdup(cur_status->pseudo);
-            buff2 = strdup(cur_status->text);
-
-            mvwprintw (local_win, i, 2, buff1);
-            mvwprintw (local_win, i, 18, buff2);
-
-            if(cur_status->next != NULL)
-                *cur_status = *cur_status->next;
-            else
-                break;
-        }
-    }
-    wrefresh (local_win);
-    return local_win;
-    //}
-}
-
-WINDOW *
-create_statusWindow (int col, int row, data_t *data)
-{
-    WINDOW *local_win = NULL;
-    local_win = newwin (row, col, 0, 0);
-
-    status_t *cur_status = NULL;
-    if ((cur_status = initStatus(cur_status)) == NULL)
-        ERROR;
-    if (data->statuses->first != NULL) {
-        *cur_status = *data->statuses->first;
-
-        int i;
-        for (i = row-2; i>0; i--) {
-
-        if (strlen (cur_status->text) > col-17)
-            i--;
-
-            mvwprintw (local_win, i, 2, cur_status->pseudo);
-            mvwprintw (local_win, i, 18, cur_status->text);
-
-            if(cur_status->next != NULL)
-                *cur_status = *cur_status->next;
-            else
-                break;
-        }
-    }
-    wrefresh (local_win);
-    return local_win;
-}
-
-void windowStatus (data_t *data)
-{   
-    erase();
-    int row = 0;
-    int col = 0;
-    getmaxyx(stdscr, row, col);
-
-    status_t *cur_status = NULL;
-    if ((cur_status = initStatus(cur_status)) == NULL)
-        ERROR;
-    if (data->statuses->first != NULL) {    
-        *cur_status = *data->statuses->first;
-    
-        int i;
-        for (i = row-2; i>0; i--) {
-            
-            if (strlen (cur_status->text) > col-17)
-                i--;
-
-            move(i, 2);
-            printw("%s", cur_status->pseudo);
-            move(i, 15);
-            printw("%s", cur_status->text);
-
-            if(cur_status->next != NULL)
-                *cur_status = *cur_status->next;
-            else
-                break;
-        }
-    }
-
-    refresh();
+    init_pair(1, COLOR_RED, -1);
+    init_pair(2, COLOR_CYAN, -1);
+    curs_set(0);
 }

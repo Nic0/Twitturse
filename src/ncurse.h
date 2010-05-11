@@ -11,13 +11,8 @@ ncurseApplication (void *arg);
 void 
 windowInit (void);
 
-void 
-windowBasic (data_t *data);
-
-WINDOW *
-create_statusWindow (int col, int row, data_t *data);
-
-WINDOW *
-update_statusWindow (WINDOW *local_win, int col, int row, data_t *data);
+void
+print_in_middle(WINDOW *win, int starty, int startx, int width, char *string,
+                chtype color);
 
 #endif
