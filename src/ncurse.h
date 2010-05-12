@@ -4,15 +4,24 @@
 #include "init.h"
 
 #include <ncurses.h>
+#include <menu.h>
 
-void *
-ncurseApplication (void *arg);
+typedef struct window_status_t
+{
+    data_t  *data;
+    ITEM   **items;
+    MENU    *menu;
+    WINDOW  *win;
+} window_status_t;
+
 
 void 
 windowInit (void);
 
-void
-print_in_middle(WINDOW *win, int starty, int startx, int width, char *string,
-                chtype color);
+void *
+ncurseApplication (void *arg);
+
+void *
+refresh_status_window (void *arg);
 
 #endif
