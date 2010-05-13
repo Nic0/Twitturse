@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.13
+*       Twitturse   v 0.0.14
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -67,7 +67,7 @@ main (void)
    printf("your tweet:%s", tweet);
     post_status (tweet);*/
 
-    pthread_join (pidStatuses, NULL);
+    //pthread_join (pidStatuses, NULL);
     pthread_join (pidCurse, NULL);
 
     freeStatuses(data->statuses);

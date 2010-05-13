@@ -31,7 +31,8 @@ getNewStatuses (void *arg)
     xmlDoc  *xmldoc = NULL;
     char    *url    = NULL;
     url = "http://api.twitter.com/statuses/home_timeline.xml";
-    urldoc = get_URL (url, data->config);
+    if ((urldoc = get_URL (url, data->config)) == NULL)
+        ERROR;
 
     if ((xmldoc = xmlParseMemory (urldoc, strlen(urldoc))) == NULL)
         ERROR;
