@@ -24,4 +24,7 @@ ncurseApplication (void *arg);
 void *
 refresh_status_window (void *arg);
 
+void 
+send_tweet_window (window_status_t *window_status);
+
 #endif

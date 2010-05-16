@@ -13,6 +13,7 @@
 #include <curses.h>
 #endif
 #include <menu.h>
+#include <form.h>
 
 #include "init.h"
 #include "ncurse.h"
@@ -72,6 +73,9 @@ ncurseApplication (void *arg)
                 status_t *status = item_userptr(cur);
                 mvwprintw(window_status->win, 0, 0, status->id);
                 break;
+            case 't': 
+                send_tweet_window(window_status);
+                break;
             }
 
 
@@ -89,7 +93,85 @@ ncurseApplication (void *arg)
     pthread_exit(NULL);
 }
 
-void windowInit (void)
+void
+send_tweet_window (window_status_t *window_status)
+{
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
+
+    FIELD *tweet[1];
+    FORM  *my_form      = NULL;
+    int ch;
+
+    tweet[0] = new_field(3, 70, 1, 5, 0, 0);
+    tweet[1] = NULL;
+    set_field_back(tweet[0], A_UNDERLINE);
+    my_form = new_form(tweet);
+
+    WINDOW *window_tweet = NULL;
+    window_tweet = newwin(6, 80, 2, (x/2)-40);
+    keypad(window_tweet, TRUE);
+    //wrefresh(window_tweet);
+
+
+	/* Set main window and sub window */
+    set_form_win(my_form, window_tweet);
+    set_form_sub(my_form, derwin(window_tweet, 6, 80, 2, 2));
+    
+    post_form(my_form);
+    box(window_tweet, 0, 0);
+    mvwprintw(window_tweet, 0, 2, "Tweet this ! (ESC to abord)");
+    wrefresh(window_tweet);
+    curs_set(1);
+    int formlenght;
+	while((ch = wgetch(window_tweet)) != 27)
+	{	switch(ch)
+		{
+            case KEY_LEFT:
+                form_driver(my_form, REQ_PREV_CHAR);
+                break;
+            case KEY_RIGHT:
+                form_driver(my_form, REQ_NEXT_CHAR);
+                break;
+			case 127: /* Backspace */
+				form_driver(my_form, REQ_PREV_CHAR);
+				form_driver(my_form, REQ_DEL_CHAR);
+				break;
+            case 10: /* Enter */
+                mvwprintw (window_tweet, 4, 10, "Tweet this ? (y)es (n)o");
+                int chr;
+                chr = wgetch(window_tweet);
+                switch(chr) {
+                    case 'y':
+                        mvwprintw (window_tweet, 4, 10, "The tweet will be sent  ");
+                        break;
+                    case 'n':
+                        mvwprintw (window_tweet, 4, 10, "                           ");
+                        break;
+                }
+                break;
+			default:
+				/* If this is a normal character, it gets */
+				/* Printed				  */	
+				form_driver(my_form, ch);
+				break;
+		}
+        wrefresh(window_tweet);
+	}
+	/* Un post form and free the memory */
+    unpost_form(my_form);
+    free_form(my_form);
+    free_field(tweet[0]);
+
+    wborder(window_tweet, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wrefresh(window_tweet);
+    delwin(window_tweet);
+    curs_set(0);
+}
+
+void 
+windowInit (void)
 {
     initscr();
     keypad(stdscr, TRUE);
@@ -105,7 +187,7 @@ void windowInit (void)
 void *
 refresh_status_window (void *arg)
 {
-    window_status_t *window_status;
+    window_status_t *window_status = NULL;
     window_status = arg;
     status_t *cur_status    = NULL;
     status_t *first_status   = NULL;
@@ -150,7 +232,7 @@ refresh_status_window (void *arg)
 	
     
     /* Crate menu */
-    pthread_mutex_lock(&mutex);
+    //pthread_mutex_lock(&mutex);
 	window_status->menu = new_menu((ITEM **)window_status->items);
 
 	/* Create the window to be associated with the menu */
@@ -176,7 +258,7 @@ refresh_status_window (void *arg)
 	wrefresh(window_status->win);
 	refresh();
 
-    pthread_mutex_unlock(&mutex);
+    //pthread_mutex_unlock(&mutex);
 	     //Unpost and free all the memory taken up 
         /*unpost_menu(window_status->menu);
         free_menu(window_status->menu);
