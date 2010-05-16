@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.14-3
+*       Twitturse   v 0.0.14-4
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
+//#include <libintl.h>
 
 #include <libxml/tree.h>
 #include <libxml/parser.h>
@@ -38,6 +39,11 @@ pthread_mutex_t mutex;
 int 
 main (void)
 {
+/*
+    setlocale (LC_ALL, "");
+    bindtextdomain (PACKAGE, LOCALEDIR);
+    textdaimen (PACKAGE);
+*/
     data_t *data = NULL;
     if ((data = initData(data)) == NULL) {
         ERROR;

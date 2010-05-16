@@ -101,6 +101,7 @@ post_status (char *tweet)
   if(curl) {
     /* what URL that receives this POST */ 
         curl_easy_setopt (curl, CURLOPT_URL, "http://api.twitter.com/1/statuses/update.xml");
+        // TODO paste the config file
         curl_easy_setopt (curl, CURLOPT_USERNAME, "twitturse");
         curl_easy_setopt (curl, CURLOPT_PASSWORD, "58auau59");
       

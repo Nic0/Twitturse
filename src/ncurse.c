@@ -23,7 +23,7 @@
         __FILE__, __LINE__, \
         errno, strerror(errno))
 
-#define CTRLD   4
+//#define CTRLD   4
 
 extern pthread_mutex_t mutex;
 
@@ -47,41 +47,40 @@ ncurseApplication (void *arg)
     //menu_driver(window_status->menu, REQ_LAST_ITEM);
 	while((c = wgetch(window_status->win)) != 'q')
 	{       switch(c)
-	        {	case KEY_DOWN:
-                pthread_mutex_lock(&mutex);
-				    menu_driver(window_status->menu, REQ_DOWN_ITEM);
-                pthread_mutex_unlock(&mutex);
-				break;
-			case KEY_UP:
-                pthread_mutex_lock(&mutex);
-				    menu_driver(window_status->menu, REQ_UP_ITEM);
-                pthread_mutex_unlock(&mutex);
-				break;
-			case KEY_NPAGE:
-                pthread_mutex_lock(&mutex);
-				    menu_driver(window_status->menu, REQ_SCR_DPAGE);
-                pthread_mutex_unlock(&mutex);
-				break;
-			case KEY_PPAGE:
-                pthread_mutex_lock(&mutex);
-				    menu_driver(window_status->menu, REQ_SCR_UPAGE);
-                pthread_mutex_unlock(&mutex);
-				break;
-            case 10: {/* Enter */
-                ITEM *cur;
-                cur = current_item(window_status->menu);
-                status_t *status = item_userptr(cur);
-                mvwprintw(window_status->win, 0, 0, status->id);
-                break;
-            case 't': 
-                send_tweet_window(window_status);
-                break;
-            }
-
-
-		}
-                wrefresh(window_status->win);
-	}	
+	        {
+                case KEY_DOWN:
+                    pthread_mutex_lock(&mutex);
+				        menu_driver(window_status->menu, REQ_DOWN_ITEM);
+                    pthread_mutex_unlock(&mutex);
+				    break;
+			    case KEY_UP:
+                    pthread_mutex_lock(&mutex);
+				        menu_driver(window_status->menu, REQ_UP_ITEM);
+                    pthread_mutex_unlock(&mutex);
+				    break;
+			    case KEY_NPAGE:
+                    pthread_mutex_lock(&mutex);
+				        menu_driver(window_status->menu, REQ_SCR_DPAGE);
+                    pthread_mutex_unlock(&mutex);
+				    break;
+			    case KEY_PPAGE:
+                    pthread_mutex_lock(&mutex);
+				        menu_driver(window_status->menu, REQ_SCR_UPAGE);
+                    pthread_mutex_unlock(&mutex);
+				    break;
+                case 10: {  /* Enter */
+                    ITEM *cur;
+                    cur = current_item(window_status->menu);
+                    status_t *status = item_userptr(cur);
+                    mvwprintw(window_status->win, 0, 0, status->id);
+                    break;
+                }
+                case 't': 
+                    send_tweet_window(window_status);
+                    break;
+		    }
+        wrefresh(window_status->win);
+	}
 
 	/* Unpost and free all the memory taken up */
         unpost_menu(window_status->menu);
@@ -124,7 +123,7 @@ send_tweet_window (window_status_t *window_status)
     mvwprintw(window_tweet, 0, 2, "Tweet this ! (ESC to abord)");
     wrefresh(window_tweet);
     curs_set(1);
-    int formlenght;
+    form_driver(my_form, REQ_BEG_FIELD);
 	while((ch = wgetch(window_tweet)) != 27)
 	{	switch(ch)
 		{
@@ -138,6 +137,9 @@ send_tweet_window (window_status_t *window_status)
 				form_driver(my_form, REQ_PREV_CHAR);
 				form_driver(my_form, REQ_DEL_CHAR);
 				break;
+            case 330: /* Suppr. */
+                form_driver(my_form, REQ_DEL_CHAR);
+                break;
             case 10: /* Enter */
                 mvwprintw (window_tweet, 4, 10, "Tweet this ? (y)es (n)o");
                 int chr;
@@ -145,9 +147,17 @@ send_tweet_window (window_status_t *window_status)
                 switch(chr) {
                     case 'y':
                         mvwprintw (window_tweet, 4, 10, "The tweet will be sent  ");
+                        char *tweet_send = NULL;
+                        char *formbuff = NULL;
+                        form_driver(my_form, REQ_VALIDATION);
+                        formbuff = field_buffer(tweet[0], 0);
+                        tweet_send = strndup(formbuff, 140);
+                        post_status(tweet_send);
+                        ch = 27; //break the while
                         break;
                     case 'n':
                         mvwprintw (window_tweet, 4, 10, "                           ");
+                        form_driver(my_form, REQ_END_FIELD);
                         break;
                 }
                 break;
@@ -157,6 +167,10 @@ send_tweet_window (window_status_t *window_status)
 				form_driver(my_form, ch);
 				break;
 		}
+  /*      char *formbuff = NULL;
+        form_driver(my_form, REQ_VALIDATION);
+        formbuff = field_buffer(tweet[0], 0);
+        mvwprintw (window_tweet, 4, 10, "'%s'", formbuff);*/
         wrefresh(window_tweet);
 	}
 	/* Un post form and free the memory */
