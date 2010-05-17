@@ -101,21 +101,21 @@ post_status (char *tweet)
   if(curl) {
     /* what URL that receives this POST */ 
         curl_easy_setopt (curl, CURLOPT_URL, "http://api.twitter.com/1/statuses/update.xml");
-        // TODO paste the config file
+            // TODO parse the config file
         curl_easy_setopt (curl, CURLOPT_USERNAME, "twitturse");
         curl_easy_setopt (curl, CURLOPT_PASSWORD, "58auau59");
       
       /* only disable 100-continue header if explicitly requested */ 
-      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
-    curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
-    res = curl_easy_perform(curl);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
+        curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+        res = curl_easy_perform(curl);
  
     /* always cleanup */ 
-    curl_easy_cleanup(curl);
+        curl_easy_cleanup(curl);
  
     /* then cleanup the formpost chain */ 
-    curl_formfree(formpost);
+        curl_formfree(formpost);
     /* free slist */ 
-    curl_slist_free_all (headerlist);
+        curl_slist_free_all (headerlist);
   }
 }

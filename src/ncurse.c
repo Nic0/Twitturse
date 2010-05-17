@@ -30,6 +30,7 @@ extern pthread_mutex_t mutex;
 void *
 ncurseApplication (void *arg)
 {
+    /*  TODO do a function of it */
     window_status_t *window_status;
     window_status = malloc (sizeof(window_status_t));
 
@@ -37,6 +38,7 @@ ncurseApplication (void *arg)
     window_status->menu     = NULL;
     window_status->win      = NULL;
     window_status->data     = arg;
+    window_status->refresh  = 0;
     int c;
 
     pthread_t pidrefresh;
@@ -77,6 +79,7 @@ ncurseApplication (void *arg)
                 }
                 case 't': 
                     send_tweet_window(window_status);
+                    clear();
                     break;
 		    }
         wrefresh(window_status->win);
@@ -124,8 +127,9 @@ send_tweet_window (window_status_t *window_status)
     wrefresh(window_tweet);
     curs_set(1);
     form_driver(my_form, REQ_BEG_FIELD);
-	while((ch = wgetch(window_tweet)) != 27)
-	{	switch(ch)
+    int quit = 0;
+	while((ch = wgetch(window_tweet)) != 27) {
+    switch(ch)
 		{
             case KEY_LEFT:
                 form_driver(my_form, REQ_PREV_CHAR);
@@ -146,14 +150,15 @@ send_tweet_window (window_status_t *window_status)
                 chr = wgetch(window_tweet);
                 switch(chr) {
                     case 'y':
-                        mvwprintw (window_tweet, 4, 10, "The tweet will be sent  ");
+                        mvwprintw (window_tweet, 4, 10, "The tweet will be sent soon ");
                         char *tweet_send = NULL;
                         char *formbuff = NULL;
                         form_driver(my_form, REQ_VALIDATION);
                         formbuff = field_buffer(tweet[0], 0);
                         tweet_send = strndup(formbuff, 140);
                         post_status(tweet_send);
-                        ch = 27; //break the while
+                        quit = 1;
+                        window_status->refresh = 1;
                         break;
                     case 'n':
                         mvwprintw (window_tweet, 4, 10, "                           ");
@@ -172,10 +177,12 @@ send_tweet_window (window_status_t *window_status)
         formbuff = field_buffer(tweet[0], 0);
         mvwprintw (window_tweet, 4, 10, "'%s'", formbuff);*/
         wrefresh(window_tweet);
+        if (quit == 1)
+            break;
 	}
 	/* Un post form and free the memory */
     unpost_form(my_form);
-    free_form(my_form);
+    //free_form(my_form);
     free_field(tweet[0]);
 
     wborder(window_tweet, ' ', ' ', ' ',' ',' ',' ',' ',' ');
@@ -280,9 +287,10 @@ refresh_status_window (void *arg)
                 free_item(window_status->items[i]);*/
     while (1) { 
         //pthread_mutex_lock(&mutex);
-        if ((strcmp(window_status->data->statuses->first->id, first_status->id)) != 0) {
+        if ((strcmp(window_status->data->statuses->first->id, first_status->id)) != 0 || 
+             window_status->refresh == 1) {
 
-
+        window_status->refresh = 0;
 		ITEM *cur_id;
 		cur_id = current_item(window_status->menu);
 		status_t *status_id = item_userptr(cur_id);
@@ -362,6 +370,6 @@ refresh_status_window (void *arg)
 	    refresh();
 
         } 
-    sleep(5);
+    sleep(1);
     }
 }

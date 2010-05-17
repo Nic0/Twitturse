@@ -12,6 +12,7 @@ typedef struct window_status_t
     ITEM   **items;
     MENU    *menu;
     WINDOW  *win;
+    int      refresh;
 } window_status_t;
 
 
