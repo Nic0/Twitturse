@@ -23,30 +23,30 @@
         __FILE__, __LINE__, \
         errno, strerror(errno))
 
-//#define CTRLD   4
-
 extern pthread_mutex_t mutex;
-
+/*  First application ncurses call, but a thread is done from here
+ *  to display the main window with statuses (on refresh_status_window
+ *  fuction) so here is basicly only the main navigation menu between tweets
+ */
 void *
 ncurseApplication (void *arg)
 {
     /*  TODO do a function of it */
-    window_status_t *window_status;
+    window_status_t *window_status = NULL;
     window_status = malloc (sizeof(window_status_t));
-
     window_status->items    = NULL;
     window_status->menu     = NULL;
     window_status->win      = NULL;
     window_status->data     = arg;
     window_status->refresh  = 0;
-    int c;
 
     pthread_t pidrefresh;
     if (pthread_create (&pidrefresh, NULL, refresh_status_window, window_status) != 0)
         ERROR;
 
-
-    //menu_driver(window_status->menu, REQ_LAST_ITEM);
+    /*  Here the main menu to navigate between tweets, or choose an action
+     */
+    int c;
 	while((c = wgetch(window_status->win)) != 'q')
 	{       switch(c)
 	        {
@@ -70,7 +70,8 @@ ncurseApplication (void *arg)
 				        menu_driver(window_status->menu, REQ_SCR_UPAGE);
                     pthread_mutex_unlock(&mutex);
 				    break;
-                case 10: {  /* Enter */
+                case 32:        /* Espace */
+                case 10: {      /* Enter */
                     ITEM *cur;
                     cur = current_item(window_status->menu);
                     status_t *status = item_userptr(cur);
@@ -79,7 +80,7 @@ ncurseApplication (void *arg)
                     menu_driver(window_status->menu, REQ_DOWN_ITEM);
                     break;
                 }
-                case 't': 
+                case 't':       /* t = write a tweet    */
                     send_tweet_window(window_status);
                     clear();
                     break;
@@ -130,9 +131,13 @@ send_tweet_window (window_status_t *window_status)
     curs_set(1);
     form_driver(my_form, REQ_BEG_FIELD);
     int quit = 0;
+
+    /*  navigation menu of    ***  send_tweet_window  ***
+     *  fill up the field, and confirmation to send the tweet
+     */
 	while((ch = wgetch(window_tweet)) != 27) {
-    switch(ch)
-		{
+        switch(ch) {
+
             case KEY_LEFT:
                 form_driver(my_form, REQ_PREV_CHAR);
                 break;
@@ -151,17 +156,17 @@ send_tweet_window (window_status_t *window_status)
                 int chr;
                 chr = wgetch(window_tweet);
                 switch(chr) {
-                    case 'y':
-                        mvwprintw (window_tweet, 4, 10, "The tweet will be sent soon ");
+                    case 'y': {
                         char *tweet_send = NULL;
                         char *formbuff = NULL;
                         form_driver(my_form, REQ_VALIDATION);
                         formbuff = field_buffer(tweet[0], 0);
                         tweet_send = strndup(formbuff, 140);
-                        post_status(tweet_send);
+                        post_status(tweet_send, window_status->data->config);
                         quit = 1;
                         window_status->refresh = 1;
                         break;
+                    }
                     case 'n':
                         mvwprintw (window_tweet, 4, 10, "                           ");
                         form_driver(my_form, REQ_END_FIELD);
@@ -169,20 +174,14 @@ send_tweet_window (window_status_t *window_status)
                 }
                 break;
 			default:
-				/* If this is a normal character, it gets */
-				/* Printed				  */	
+				/* If this is a normal character, it gets printed   */
 				form_driver(my_form, ch);
 				break;
 		}
-  /*      char *formbuff = NULL;
-        form_driver(my_form, REQ_VALIDATION);
-        formbuff = field_buffer(tweet[0], 0);
-        mvwprintw (window_tweet, 4, 10, "'%s'", formbuff);*/
         wrefresh(window_tweet);
         if (quit == 1)
             break;
 	}
-	/* Un post form and free the memory */
     unpost_form(my_form);
     //free_form(my_form);
     free_field(tweet[0]);
@@ -192,7 +191,9 @@ send_tweet_window (window_status_t *window_status)
     delwin(window_tweet);
     curs_set(0);
 }
-
+/*  Init ncurses routine, and set colors as well,
+ *  TODO: colors should be choose from the config file.
+ */
 void 
 windowInit (void)
 {
@@ -206,7 +207,10 @@ windowInit (void)
     init_pair(2, COLOR_CYAN, -1);
     curs_set(0);
 }
-
+/*  This display a small window with every detail of a tweet,
+ *  like pseudo, (TODO time), full tweet's text...
+ *  TODO: if press 'r' key, this should retweet it
+ */
 void
 detail_status_window (status_t *display_status)
 {
@@ -219,37 +223,23 @@ detail_status_window (status_t *display_status)
 
     local_win = newwin(8, 80, 2, (x/2)-40);
 
-    mvwprintw (local_win, 1, 5, "Name: %s", display_status->pseudo);
-    box(local_win, 0, 0);
+    FIELD *tweet[1];
+    FORM  *my_form      = NULL;
+    int ch;
 
-    if (strlen(display_status->text) < 70 ) {
-        mvwprintw(local_win, 2, 5, "%s", display_status->text);
-    } else {
-        FIELD *tweet[1];
-        FORM  *my_form      = NULL;
-        int ch;
+    tweet[0] = new_field(3, 70, 3, 5, 0, 0);
+    tweet[1] = NULL;
+    set_field_buffer(tweet[0], 0, display_status->text);
+    my_form = new_form(tweet);
 
-        tweet[0] = new_field(3, 70, 3, 5, 0, 0);
-        tweet[1] = NULL;
-        set_field_buffer(tweet[0], 0, display_status->text);
-        my_form = new_form(tweet);
-
-        keypad(local_win, TRUE);
-    //wrefresh(window_tweet);
-	/* Set main window and sub window */
+    keypad(local_win, TRUE);
     set_form_win(my_form, local_win);
     set_form_sub(my_form, derwin(local_win, 6, 80, 0, 0));
     
     post_form(my_form);
     box(local_win, 0, 0);
     mvwprintw(local_win, 1, 5, "Name: %s", display_status->pseudo);
-    wrefresh(local_win);
-    } 
-
-
         
-
-
     wrefresh(local_win);
 
     getchar();
@@ -258,6 +248,19 @@ detail_status_window (status_t *display_status)
     wrefresh(local_win);
     delwin(local_win);
 }
+
+/*  Main routine for display the background menu of statuses
+ *  Containing :
+ *  name:            screen_pseudo
+ *  description:     text (text of the tweet)
+ *  userptr:         who is a struct of the curent status, with
+ *  every information needed to display in a singular window if
+ *  needed.
+ *
+ *  Certainly should be done better as I go througt to display
+ *  the first time, and again with a while to refresh thir
+ *  should be done only with the second part... TODO
+ */
 
 void *
 refresh_status_window (void *arg)
@@ -296,7 +299,7 @@ refresh_status_window (void *arg)
                 window_status->items[i] = new_item(cur_status->pseudo,
                                                    cur_status->text);
                 set_item_userptr(window_status->items[i], cur_status);
-
+            //TODO set a HL if the pseudo of the tweet is yourself (config->login)
          /*       if(strcmp(cur_status->pseudo, data->config->login) == 0)
           *          set_item_opts(my_items[i], COLOR_PAIR(2));
           */          
@@ -306,39 +309,26 @@ refresh_status_window (void *arg)
     pthread_mutex_unlock(&mutex);
 	
     
-    /* Crate menu */
-    //pthread_mutex_lock(&mutex);
-	window_status->menu = new_menu((ITEM **)window_status->items);
-
+    	window_status->menu = new_menu((ITEM **)window_status->items);
 	/* Create the window to be associated with the menu */
         window_status->win = newwin(row-2, col-2, 1, 1);
         keypad(window_status->win, TRUE);
-     
 	/* Set main window and sub window */
         set_menu_win(window_status->menu, window_status->win);
         set_menu_sub(window_status->menu, derwin(window_status->win, 
                                                  row-2, col-4, 3, 1));
 	    set_menu_format(window_status->menu, row-2, 1);
 		set_menu_fore(window_status->menu, COLOR_PAIR(2));
-
-	/* Set menu mark to the string " * " */
         set_menu_mark(window_status->menu, " > ");
 
-    refresh();
+        refresh();
         
-	/* Post the menu */
-	post_menu(window_status->menu);
-    menu_driver(window_status->menu, REQ_LAST_ITEM);
+	    post_menu(window_status->menu);
+        menu_driver(window_status->menu, REQ_LAST_ITEM);
     
-	wrefresh(window_status->win);
-	refresh();
+	    wrefresh(window_status->win);
+	    refresh();
 
-    //pthread_mutex_unlock(&mutex);
-	     //Unpost and free all the memory taken up 
-        /*unpost_menu(window_status->menu);
-        free_menu(window_status->menu);
-        for(i = 0; i < n_choices; ++i)
-                free_item(window_status->items[i]);*/
     while (1) { 
         //pthread_mutex_lock(&mutex);
         if ((strcmp(window_status->data->statuses->first->id, first_status->id)) != 0 || 
@@ -348,6 +338,11 @@ refresh_status_window (void *arg)
 		ITEM *cur_id;
 		cur_id = current_item(window_status->menu);
 		status_t *status_id = item_userptr(cur_id);
+
+        menu_driver(window_status->menu, REQ_LAST_ITEM);
+            int was_last=0;
+        if (cur_id == current_item(window_status->menu))
+            was_last = 1;
 
 
 		unpost_menu(window_status->menu);
@@ -382,27 +377,16 @@ refresh_status_window (void *arg)
 		        if (loc_status->prev != NULL)
 		            loc_status = loc_status->prev;
 		}
-	    //pthread_mutex_unlock(&mutex);
-	
 	    
-	    /* Crate menu */
-	   // pthread_mutex_lock(&mutex);
 		window_status->menu = new_menu((ITEM **)window_status->items);
-
-		/* Create the window to be associated with the menu */
 		window_status->win = newwin(row-2, col-2, 1, 1);
 		keypad(window_status->win, TRUE);
-	     
-		/* Set main window and sub window */
 		set_menu_win(window_status->menu, window_status->win);
 		set_menu_sub(window_status->menu, derwin(window_status->win, 
 		                                         row-2, col-4, 3, 1));
-		    set_menu_format(window_status->menu, row-2, 1);
-			set_menu_fore(window_status->menu, COLOR_PAIR(2));
-
-		/* Set menu mark to the string " * " */
+		set_menu_format(window_status->menu, row-2, 1);
+		set_menu_fore(window_status->menu, COLOR_PAIR(2));
 		set_menu_mark(window_status->menu, " > ");
-	    //pthread_mutex_unlock(&mutex);
 	    refresh();
 		
 		/* Post the menu */
@@ -413,7 +397,7 @@ refresh_status_window (void *arg)
 		    ITEM *cur;
 		    cur = current_item(window_status->menu);
 		    status_t *status = item_userptr(cur);
-		    if ((strcmp (status->id, status_id->id)) != 0)
+		    if ((strcmp (status->id, status_id->id)) != 0 && was_last == 0)
 		        menu_driver(window_status->menu, REQ_UP_ITEM);
 		    else
 		        break;

@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.16
+*       Twitturse   v 0.0.16-1
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
@@ -40,12 +40,9 @@ pthread_mutex_t mutex;
 int 
 main (void)
 {
-
     setlocale (LC_ALL, "");
-    //bindtextdomain (PACKAGE, LOCALEDIR);
-    //textdomain (PACKAGE);
-
     data_t *data = NULL;
+
     if ((data = initData(data)) == NULL) {
         ERROR;
         return EXIT_FAILURE;
@@ -53,27 +50,20 @@ main (void)
     if ((getConfiguration(data->config)) != 0)
         return EXIT_FAILURE;
 
-        xmlInitParser();
+    xmlInitParser();
 
-        pthread_t pidStatuses;
-        if (pthread_create(&pidStatuses, NULL, getNewStatuses, data) != 0) {
-            ERROR;
-            return EXIT_FAILURE;
-        }
+    pthread_t pidStatuses;
+    if (pthread_create(&pidStatuses, NULL, getNewStatuses, data) != 0) {
+        ERROR;
+        return EXIT_FAILURE;
+    }
 
-        pthread_t pidCurse;
-        if (pthread_create(&pidCurse, NULL, ncurseApplication, data) != 0) {
-            ERROR;
-            return EXIT_FAILURE;
-        }
-        
-/*
-   puts("tweet>");
-   char tweet[141] = {0};
-   gets(tweet);
-   printf("your tweet:%s", tweet);
-    post_status (tweet);*/
-
+    pthread_t pidCurse;
+    if (pthread_create(&pidCurse, NULL, ncurseApplication, data) != 0) {
+        ERROR;
+        return EXIT_FAILURE;
+    }
+    
     //pthread_join (pidStatuses, NULL);
     pthread_join (pidCurse, NULL);
 
