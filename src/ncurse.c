@@ -74,7 +74,9 @@ ncurseApplication (void *arg)
                     ITEM *cur;
                     cur = current_item(window_status->menu);
                     status_t *status = item_userptr(cur);
-                    mvwprintw(window_status->win, 0, 0, status->id);
+                    detail_status_window (status);
+                    menu_driver(window_status->menu, REQ_UP_ITEM);
+                    menu_driver(window_status->menu, REQ_DOWN_ITEM);
                     break;
                 }
                 case 't': 
@@ -203,6 +205,58 @@ windowInit (void)
     init_pair(1, COLOR_YELLOW, -1);
     init_pair(2, COLOR_CYAN, -1);
     curs_set(0);
+}
+
+void
+detail_status_window (status_t *display_status)
+{
+    
+    WINDOW *local_win;
+
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
+
+    local_win = newwin(8, 80, 2, (x/2)-40);
+
+    mvwprintw (local_win, 1, 5, "Name: %s", display_status->pseudo);
+    box(local_win, 0, 0);
+
+    if (strlen(display_status->text) < 70 ) {
+        mvwprintw(local_win, 2, 5, "%s", display_status->text);
+    } else {
+        FIELD *tweet[1];
+        FORM  *my_form      = NULL;
+        int ch;
+
+        tweet[0] = new_field(3, 70, 3, 5, 0, 0);
+        tweet[1] = NULL;
+        set_field_buffer(tweet[0], 0, display_status->text);
+        my_form = new_form(tweet);
+
+        keypad(local_win, TRUE);
+    //wrefresh(window_tweet);
+	/* Set main window and sub window */
+    set_form_win(my_form, local_win);
+    set_form_sub(my_form, derwin(local_win, 6, 80, 0, 0));
+    
+    post_form(my_form);
+    box(local_win, 0, 0);
+    mvwprintw(local_win, 1, 5, "Name: %s", display_status->pseudo);
+    wrefresh(local_win);
+    } 
+
+
+        
+
+
+    wrefresh(local_win);
+
+    getchar();
+
+    wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wrefresh(local_win);
+    delwin(local_win);
 }
 
 void *
