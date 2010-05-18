@@ -89,7 +89,9 @@ ncurseApplication (void *arg)
                 case 'r': {    /* r = retweet          */
                     ITEM *cur;
                     cur = current_item(window_status->menu);
-                    status_t *status = item_userptr(cur);
+                    status_t *status = NULL;
+                    status = initStatus(status);
+                    status = item_userptr(cur);
                     retweet_window(window_status, status);
                     menu_driver(window_status->menu, REQ_UP_ITEM);
                     menu_driver(window_status->menu, REQ_DOWN_ITEM);
@@ -427,24 +429,26 @@ refresh_status_window (void *arg)
 void
 retweet_window (window_status_t *window_status, status_t *retweet_status)
 {
-    int x = 0;
-    int y = 0;
-    getmaxyx(stdscr, y, x);
     char *buffer;
     buffer = strdup("RT @");
     cat_chaine (buffer, retweet_status->pseudo);
     cat_chaine (buffer, " ");
+    cat_chaine (buffer, retweet_status->text);
 
     FIELD *tweet[1];
     FORM  *my_form      = NULL;
     int ch;
 
     tweet[0] = new_field(3, 70, 1, 5, 0, 0);
-    set_field_buffer(tweet[0], 0, buffer);
 
     tweet[1] = NULL;
     set_field_back(tweet[0], A_UNDERLINE);
+    set_field_buffer(tweet[0], 0, buffer);
     my_form = new_form(tweet);
+    
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
 
     WINDOW *window_tweet = NULL;
     window_tweet = newwin(6, 80, 2, (x/2)-40);
@@ -461,7 +465,7 @@ retweet_window (window_status_t *window_status, status_t *retweet_status)
     mvwprintw(window_tweet, 0, 2, "RE-Tweet this ! (ESC to abord)");
     wrefresh(window_tweet);
     curs_set(1);
-    form_driver(my_form, REQ_BEG_FIELD);
+    form_driver(my_form, REQ_END_FIELD);
     int quit = 0;
 
     /*  navigation menu of    ***  send_tweet_window  ***
