@@ -9,8 +9,19 @@ AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CC
+AM_PROG_CC_C_O
 
 # Checks for libraries.
+# FIXME: Replace `main' with a function in `-lcurl':
+AC_CHECK_LIB([curl], [main])
+# FIXME: Replace `main' with a function in `-lform':
+AC_CHECK_LIB([form], [main])
+# FIXME: Replace `main' with a function in `-lmenu':
+AC_CHECK_LIB([menu], [main])
+# FIXME: Replace `main' with a function in `-lncurses':
+AC_CHECK_LIB([ncurses], [main])
+# FIXME: Replace `main' with a function in `-lpthread':
+AC_CHECK_LIB([pthread], [main])
 
 # Checks for header files.
 AC_CHECK_HEADERS([locale.h stdlib.h string.h unistd.h])
@@ -23,9 +34,6 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([setlocale strchr strdup strerror strndup])
 
-AC_CONFIG_FILES([
-    Makefile
-    src/Makefile
-    ])
-
+AC_CONFIG_FILES([Makefile
+                 src/Makefile])
 AC_OUTPUT
