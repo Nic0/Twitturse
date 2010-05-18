@@ -153,8 +153,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 twitturse_SOURCES = config.c config.h curl.c curl.h init.c init.h main.c ncurse.c ncurse.h status.c status.h utils.c utils.h
-twitturse_CFLAGS = -g -W -lncurses -lform -lmenu -lcurl -lpthread `xml2-config --cflasg --libs`
-twitturse_LDFLAGS = -g -W -lncurses -lform -lmenu -lcurl -lpthread `xml2-config --cflasg --libs`
+twitturse_CFLAGS = -g -W -lncurses -lform -lmenu -lcurl -lpthread `xml2-config --cflags --libs`
+twitturse_LDFLAGS = -g -W -lncurses -lform -lmenu -lcurl -lpthread `xml2-config --cflags --libs`
 all: all-am
 
 .SUFFIXES:

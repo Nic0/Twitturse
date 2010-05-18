@@ -14,4 +14,7 @@ void string_free (string_t * str);
 void string_ajout (string_t * str, const char *str2);
 size_t str_append (void *ptr, size_t size, size_t nmemb, void *stream);
 
+char *
+cat_chaine (char *chaine1, char *chaine2);
+
 #endif

@@ -29,7 +29,7 @@ int getConfiguration (config_t *config)
     char filebuff[MAXBUFF] = {0};
     int nbrElement = 0;
 
-    fichier = fopen (".twitturserc", "r");
+    fichier = fopen (config->path_config, "r");
     if (fichier != NULL) {
         while ((fgets (filebuff, MAXBUFF, fichier)) != NULL) {
 
@@ -70,6 +70,40 @@ int getConfiguration (config_t *config)
     }
     return 0;
 }
+/*  Get the home directory path
+ */
+int
+get_config_filedir(config_t *config)
+{
+    char *buffer;
+    if((buffer = getenv ("HOME")) != NULL)
+        if (strcat(buffer, "/.twitturserc"))
+            if(config->path_config = strdup(buffer))
+                return 0;
+    ERROR;
+    return 1;
+}
+/* Check if the config file is here, otherwise it will display 
+ * an usage for this file.
+ */
+int
+check_configfile(config_t *config)
+{
+    FILE *file = NULL;
+    file = fopen(config->path_config, "r");
+    if (file != NULL) {
+        fclose(file);
+        return 0;
+    } else {
+        puts("\n\nThe configuration file doesn't seem to be here\n");
+        printf("You should have in your %s\n", config->path_config);
+        puts("Something similar to:\n");
+        puts("login \"mylogin\"\n");
+        puts("passwd \"myaccountpass\"\n\n\n");
+        return 1;
+    }
+}
+
 /*  Utilitaire: lorsque l'élément en question est lu dans le fichier de configuration
  *  il apparait sous la forme "element", cette fonction enlève donc les "" pour ne laisser
  *  que l'élément.

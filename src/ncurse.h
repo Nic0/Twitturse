@@ -25,6 +25,9 @@ ncurseApplication (void *arg);
 void *
 refresh_status_window (void *arg);
 
+void
+retweet_window(window_status_t *window_status, status_t *retweet_status);
+
 void 
 detail_status_window (status_t *display_status);
 

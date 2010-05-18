@@ -97,3 +97,17 @@ str_append (void *ptr, size_t size, size_t nmemb, void *stream)
   str->str[str->len] = '\0';
   return (len);
 }
+
+char *cat_chaine (char *chaine1, char *chaine2)
+{
+    char *result;
+    int len1, len2;
+    len1 = strlen(chaine1);
+    len2 = strlen(chaine2);
+ 
+    if(NULL == (result = realloc (chaine1, (len1 + len2 +1) * sizeof *result)))
+        return (NULL);
+ 
+    memcpy (result + len1, chaine2, len2 + 1);
+    return result;
+}

@@ -3,12 +3,19 @@
 
 typedef struct
 {
+    char *path_config;
     char *login;
     char *passwd;
 } config_t;
 
 int
 getConfiguration (config_t *config);
+
+int
+get_config_filedir(config_t *config);
+
+int
+check_configfile(config_t *config);
 
 int 
 extractConfig(char *element);

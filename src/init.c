@@ -27,8 +27,9 @@ initConfig (config_t *config)
 {
     if ((config = malloc(sizeof(config_t))) == NULL)
         return NULL;
-    config->login   = NULL;
-    config->passwd  = NULL;
+    config->path_config     = NULL;
+    config->login           = NULL;
+    config->passwd          = NULL;
     return config;
 }
 

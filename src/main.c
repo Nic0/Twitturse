@@ -47,6 +47,13 @@ main (void)
         ERROR;
         return EXIT_FAILURE;
     }
+
+    if ((get_config_filedir(data->config)) != 0)
+        return EXIT_FAILURE;
+
+    if ((check_configfile(data->config)) != 0)
+        return EXIT_FAILURE;
+
     if ((getConfiguration(data->config)) != 0)
         return EXIT_FAILURE;
 
