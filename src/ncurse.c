@@ -93,8 +93,9 @@ ncurseApplication (void *arg)
                     status = initStatus(status);
                     status = item_userptr(cur);
                     retweet_window(window_status, status);
-                    menu_driver(window_status->menu, REQ_UP_ITEM);
-                    menu_driver(window_status->menu, REQ_DOWN_ITEM);
+                    clear();
+                   /* menu_driver(window_status->menu, REQ_UP_ITEM);
+                    menu_driver(window_status->menu, REQ_DOWN_ITEM);*/
                     break;
                 }
                     
@@ -429,101 +430,26 @@ refresh_status_window (void *arg)
 void
 retweet_window (window_status_t *window_status, status_t *retweet_status)
 {
-    char *buffer;
+    char *buffer = NULL;
     buffer = strdup("RT @");
-    cat_chaine (buffer, retweet_status->pseudo);
-    cat_chaine (buffer, " ");
-    cat_chaine (buffer, retweet_status->text);
+    buffer = cat_chaine (buffer, retweet_status->pseudo);
+    buffer = cat_chaine (buffer, " ");
+    buffer = cat_chaine (buffer, retweet_status->text);
 
-    FIELD *tweet[1];
-    FORM  *my_form      = NULL;
-    int ch;
+    int chr = NULL;
 
-    tweet[0] = new_field(3, 70, 1, 5, 0, 0);
-
-    tweet[1] = NULL;
-    set_field_back(tweet[0], A_UNDERLINE);
-    set_field_buffer(tweet[0], 0, buffer);
-    my_form = new_form(tweet);
-    
-    int x = 0;
     int y = 0;
-    getmaxyx(stdscr, y, x);
-
-    WINDOW *window_tweet = NULL;
-    window_tweet = newwin(6, 80, 2, (x/2)-40);
-    keypad(window_tweet, TRUE);
-    //wrefresh(window_tweet);
-
-
-	/* Set main window and sub window */
-    set_form_win(my_form, window_tweet);
-    set_form_sub(my_form, derwin(window_tweet, 6, 80, 2, 2));
-    
-    post_form(my_form);
-    box(window_tweet, 0, 0);
-    mvwprintw(window_tweet, 0, 2, "RE-Tweet this ! (ESC to abord)");
-    wrefresh(window_tweet);
-    curs_set(1);
-    form_driver(my_form, REQ_END_FIELD);
-    int quit = 0;
-
-    /*  navigation menu of    ***  send_tweet_window  ***
-     *  fill up the field, and confirmation to send the tweet
-     */
-	while((ch = wgetch(window_tweet)) != 27) {
-        switch(ch) {
-
-            case KEY_LEFT:
-                form_driver(my_form, REQ_PREV_CHAR);
-                break;
-            case KEY_RIGHT:
-                form_driver(my_form, REQ_NEXT_CHAR);
-                break;
-			case 127: /* Backspace */
-				form_driver(my_form, REQ_PREV_CHAR);
-				form_driver(my_form, REQ_DEL_CHAR);
-				break;
-            case 330: /* Suppr. */
-                form_driver(my_form, REQ_DEL_CHAR);
-                break;
-            case 10: /* Enter */
-                mvwprintw (window_tweet, 4, 10, "Tweet this ? (y)es (n)o");
-                int chr;
-                chr = wgetch(window_tweet);
-                switch(chr) {
-                    case 'y': {
-                        char *tweet_send = NULL;
-                        char *formbuff = NULL;
-                        form_driver(my_form, REQ_VALIDATION);
-                        formbuff = field_buffer(tweet[0], 0);
-                        tweet_send = strndup(formbuff, 140);
-                        post_status(tweet_send, window_status->data->config);
-                        quit = 1;
-                        window_status->refresh = 1;
-                        break;
-                    }
-                    case 'n':
-                        mvwprintw (window_tweet, 4, 10, "                           ");
-                        form_driver(my_form, REQ_END_FIELD);
-                        break;
-                }
-                break;
-			default:
-				/* If this is a normal character, it gets printed   */
-				form_driver(my_form, ch);
-				break;
-		}
-        wrefresh(window_tweet);
-        if (quit == 1)
+    int x = 0;
+    getmaxyx(window_status->win , y, x);
+    mvwprintw(window_status->win, y-1, 10, "Re-Tweet this ? (y) (n)");
+	chr = wgetch(window_status->win);
+    switch(chr) {
+        case 'y':
+            post_retweet(buffer, window_status->data->config,
+                         retweet_status);
             break;
-	}
-    unpost_form(my_form);
-    //free_form(my_form);
-    free_field(tweet[0]);
-
-    wborder(window_tweet, ' ', ' ', ' ',' ',' ',' ',' ',' ');
-    wrefresh(window_tweet);
-    delwin(window_tweet);
-    curs_set(0);
+        default:
+            break;
+    }
+    window_status->refresh = 1;
 }

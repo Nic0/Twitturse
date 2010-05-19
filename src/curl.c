@@ -10,6 +10,7 @@
 #include "utils.h"
 #include "config.h"
 #include "curl.h"
+#include "status.h"
 
 #define ERROR fprintf (stderr, \
         "%s:%d Error (%d) : %s\n", \
@@ -84,6 +85,50 @@ post_status (char *tweet, config_t *config)
     if(curl) {
         curl_easy_setopt (curl, CURLOPT_URL, 
         "http://api.twitter.com/1/statuses/update.xml");
+        curl_easy_setopt (curl, CURLOPT_USERNAME, config->login);
+        curl_easy_setopt (curl, CURLOPT_PASSWORD, config->passwd);
+      /* only disable 100-continue header if explicitly requested */ 
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
+        curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+        res = curl_easy_perform(curl);
+ 
+        curl_easy_cleanup(curl);
+        curl_formfree(formpost);
+        curl_slist_free_all (headerlist);
+    }
+}
+
+void
+post_retweet (char *tweet, config_t *config, status_t *retweet_status)
+{
+    CURL *curl = NULL;
+    CURLcode res;
+    struct curl_httppost *formpost=NULL;
+    struct curl_httppost *lastptr=NULL;
+    struct curl_slist *headerlist=NULL;
+    static const char buf[] = "Expect:";
+ 
+    curl_global_init(CURL_GLOBAL_ALL);
+
+    char *rt_url = NULL;
+    rt_url = strdup("http://api.twitter.com/1/statuses/retweet/");
+    rt_url = cat_chaine (rt_url, retweet_status->id);
+    rt_url = cat_chaine (rt_url, ".xml");
+
+
+ 
+    curl_formadd(&formpost,
+                 &lastptr,
+                 CURLFORM_COPYNAME, "status",
+                 CURLFORM_COPYCONTENTS, tweet,
+                 CURLFORM_END);
+ 
+    curl = curl_easy_init();
+  /* initalize custom header list (stating that Expect: 100-continue is not
+     wanted */ 
+    headerlist = curl_slist_append(headerlist, buf);
+    if(curl) {
+        curl_easy_setopt (curl, CURLOPT_URL, rt_url);
         curl_easy_setopt (curl, CURLOPT_USERNAME, config->login);
         curl_easy_setopt (curl, CURLOPT_PASSWORD, config->passwd);
       /* only disable 100-continue header if explicitly requested */ 
