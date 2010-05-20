@@ -1,6 +1,6 @@
 /***********************************************************
 *
-*       Twitturse   v 0.0.18
+*       Twitturse   v 0.1.0-beta
 *
 *       Nic0 <nicolas.caen (at) gmail.com>
 *       03/05/2010
