@@ -8,7 +8,7 @@
 #include "utils.h"
 
 #define MAXBUFF 512
-#define NBR_ELEMENT 2
+#define NBR_ELEMENT 3 
 
 #define ERROR fprintf (stderr, \
         "%s:%d Error (%d) : %s\n", \
@@ -28,6 +28,10 @@ int getConfiguration (config_t *config)
     FILE *fichier;
     char filebuff[MAXBUFF] = {0};
     int nbrElement = 0;
+
+    /* Default parameter if no refresh found in configuration file
+     */
+    config->refresh = 60;
 
     fichier = fopen (config->path_config, "r");
     if (fichier != NULL) {
@@ -57,6 +61,18 @@ int getConfiguration (config_t *config)
                 return 1;
             }
 
+            if ((strncmp (filebuff, "refresh", 7)) == 0) {
+            char *tmprefresh;
+                if ((tmprefresh = (strdup(strchr(filebuff, '"')))) != NULL)
+                    if (extractConfig(tmprefresh) == 0) {
+                        config->refresh = atoi(tmprefresh);
+                        nbrElement++;
+                        continue;
+                    }
+                ERROR;
+                return 1;
+            }
+
         }
         fclose (fichier);
     }
@@ -64,8 +80,9 @@ int getConfiguration (config_t *config)
         ERROR;
         return 1;
     }
-    if (nbrElement != NBR_ELEMENT) {
-        fprintf (stderr, "The configuration file doesn't seem to contain enought or to much data\n");
+    if (nbrElement > NBR_ELEMENT || nbrElement < (NBR_ELEMENT-1)) {
+        fprintf (stderr, "The configuration file doesn't seem to contain\
+                 enought or to much data\n");
         return 1;
     }
     return 0;

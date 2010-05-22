@@ -9,4 +9,6 @@ getNewStatuses (void *data);
 void
 printStatuses (statuses_t *statuses);
 
+void
+clear_statuses (data_t *data);
 #endif

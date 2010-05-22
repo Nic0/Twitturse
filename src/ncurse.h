@@ -34,4 +34,13 @@ detail_status_window (status_t *display_status);
 void 
 send_tweet_window (window_status_t *window_status);
 
+void 
+help_window (void);
+
+void
+follow_window(config_t *config);
+
+void 
+unfollow_window(config_t *config, status_t *status);
+
 #endif

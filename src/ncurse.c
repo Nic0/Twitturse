@@ -73,17 +73,20 @@ ncurseApplication (void *arg)
 				    break;
                 case 32:        /* Espace */
                 case 10: {      /* Enter */
+                    window_status->refresh = -1;
                     ITEM *cur;
                     cur = current_item(window_status->menu);
                     status_t *status = item_userptr(cur);
                     detail_status_window (status);
-                    menu_driver(window_status->menu, REQ_UP_ITEM);
-                    menu_driver(window_status->menu, REQ_DOWN_ITEM);
+                    window_status->refresh = 1;
                     break;
                 }
                 case 't':       /* t = write a tweet    */
+
+                    window_status->refresh = -1;
                     send_tweet_window(window_status);
                     clear();
+                    window_status->refresh = 1;
                     break;
                 
                 case 'r': {    /* r = retweet          */
@@ -96,6 +99,31 @@ ncurseApplication (void *arg)
                     clear();
                    /* menu_driver(window_status->menu, REQ_UP_ITEM);
                     menu_driver(window_status->menu, REQ_DOWN_ITEM);*/
+                    break;
+                }
+                case 'c':   /*  c = clear   */
+                    clear_statuses (window_status->data);
+                    window_status->refresh = 1;
+                    clear();
+                    break;
+                case 'h':   /*  h = help menu   */
+                    window_status->refresh = -1;
+                    help_window();
+                    window_status->refresh = 1;
+                    break;
+                case 'f':
+                    window_status->refresh = -1;
+                    follow_window(window_status->data->config);
+                    window_status->refresh = 1;
+                    break;
+                case 'u': {
+                    window_status->refresh = -1;
+                    ITEM *cur;
+                    cur = current_item(window_status->menu);
+                    status_t *status = NULL;
+                    status = item_userptr(cur);
+                    unfollow_window(window_status->data->config, status);
+                    window_status->refresh = 1;
                     break;
                 }
                     
@@ -260,6 +288,7 @@ detail_status_window (status_t *display_status)
     getchar();
 
     wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wclear(local_win);
     wrefresh(local_win);
     delwin(local_win);
 }
@@ -347,7 +376,8 @@ refresh_status_window (void *arg)
     while (1) { 
         //pthread_mutex_lock(&mutex);
         if ((strcmp(window_status->data->statuses->first->id, first_status->id)) != 0 || 
-             window_status->refresh == 1) {
+             window_status->refresh == 1 &&
+             window_status->refresh != -1) {
 
         window_status->refresh = 0;
 		ITEM *cur_id;
@@ -356,8 +386,9 @@ refresh_status_window (void *arg)
 
         menu_driver(window_status->menu, REQ_LAST_ITEM);
             int was_last=0;
-        if (cur_id == current_item(window_status->menu))
-            was_last = 1;
+            //We don't want move down if it's the last status anymore
+        /*if (cur_id == current_item(window_status->menu))
+            was_last = 1;*/
 
 
 		unpost_menu(window_status->menu);
@@ -386,9 +417,9 @@ refresh_status_window (void *arg)
 		                                           loc_status->text);
 		        set_item_userptr(window_status->items[i], loc_status);
 
-		 /*       if(strcmp(cur_status->pseudo, data->config->login) == 0)
-		  *          set_item_opts(my_items[i], COLOR_PAIR(2));
-		  */          
+		        /*if(strcmp(cur_status->pseudo, data->config->login) == 0)
+		         *  set_item_opts(my_items[i], COLOR_PAIR(2));
+		         */  
 		        if (loc_status->prev != NULL)
 		            loc_status = loc_status->prev;
 		}
@@ -412,7 +443,7 @@ refresh_status_window (void *arg)
 		    ITEM *cur;
 		    cur = current_item(window_status->menu);
 		    status_t *status = item_userptr(cur);
-		    if ((strcmp (status->id, status_id->id)) != 0 && was_last == 0)
+		    if ((strcmp (status->id, status_id->id)) != 0)
 		        menu_driver(window_status->menu, REQ_UP_ITEM);
 		    else
 		        break;
@@ -452,4 +483,232 @@ retweet_window (window_status_t *window_status, status_t *retweet_status)
             break;
     }
     window_status->refresh = 1;
+}
+
+void
+help_window (void)
+{
+    WINDOW *local_win = NULL;
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
+    local_win = newwin(y-2, x-2, 0, 0);
+    box(local_win, 0, 0);
+
+
+    mvwprintw(local_win, 1, 20, "Help Menu:");
+    mvwprintw(local_win, 3, 10, "t : tweet");
+    mvwprintw(local_win, 4, 10, "r : retweet");
+    mvwprintw(local_win, 5, 10, "c : clear all tweets");
+    mvwprintw(local_win, 6, 10, "f : follow someone");
+    mvwprintw(local_win, 7, 10, "u : unfollow someone");
+    mvwprintw(local_win, 8, 10, "h : show this help menu");
+    mvwprintw(local_win, 9, 10, "space/enter : view the current tweet");
+
+    wgetch(local_win);
+
+    wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wclear(local_win);
+    wrefresh(local_win);
+    delwin(local_win);
+}
+
+void
+follow_window(config_t *config)
+{
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
+    
+    
+    FIELD *follow[1];
+    FORM  *my_form      = NULL;
+    int ch;
+
+    follow[0] = new_field(1, 20, 1, 5, 0, 0);
+    follow[1] = NULL;
+    set_field_back(follow[0], A_UNDERLINE);
+    my_form = new_form(follow);
+
+    WINDOW *local_win = NULL;
+    local_win = newwin(4, 40, 2, (x/2)-20);
+    keypad(local_win, TRUE);
+    //wrefresh(window_tweet);
+
+
+	/* Set main window and sub window */
+    set_form_win(my_form, local_win);
+    set_form_sub(my_form, derwin(local_win, 4, 40, 2, 2));
+    
+    post_form(my_form);
+    box(local_win, 0, 0);
+    mvwprintw(local_win, 0, 2, "Follow this fella ! (ESC to abord)");
+    wrefresh(local_win);
+    curs_set(1);
+    form_driver(my_form, REQ_BEG_FIELD);
+    int quit = 0;
+
+    /*  navigation menu of    ***  send_tweet_window  ***
+     *  fill up the field, and confirmation to send the tweet
+     */
+	while((ch = wgetch(local_win)) != 27) {
+        switch(ch) {
+
+            case KEY_LEFT:
+                form_driver(my_form, REQ_PREV_CHAR);
+                break;
+            case KEY_RIGHT:
+                form_driver(my_form, REQ_NEXT_CHAR);
+                break;
+			case 127: /* Backspace */
+				form_driver(my_form, REQ_PREV_CHAR);
+				form_driver(my_form, REQ_DEL_CHAR);
+				break;
+            case 330: /* Suppr. */
+                form_driver(my_form, REQ_DEL_CHAR);
+                break;
+            case 10: /* Enter */
+                mvwprintw (local_win, 3, 10, "Follow him ? (y)es (n)o");
+                int chr;
+                chr = wgetch(local_win);
+                switch(chr) {
+                    case 'y': {
+                        char *follow_send = NULL;
+                        char *formbuff = NULL;
+                        form_driver(my_form, REQ_VALIDATION);
+                        formbuff = field_buffer(follow[0], 0);
+                        follow_send = strndup(formbuff, 140);
+                        post_follow(follow_send, config);
+                        quit = 1;
+                        break;
+                    }
+                    case 'n':
+                        mvwprintw (local_win, 4, 10, "                           ");
+                        form_driver(my_form, REQ_END_FIELD);
+                        break;
+                }
+                break;
+			default:
+				/* If this is a normal character, it gets printed   */
+				form_driver(my_form, ch);
+				break;
+		}
+        wrefresh(local_win);
+        if (quit == 1)
+            break;
+	}
+    unpost_form(my_form);
+    //free_form(my_form);
+    free_field(follow[0]);
+
+    curs_set(0);
+
+    wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wclear(local_win);
+    wrefresh(local_win);
+    delwin(local_win);
+}
+
+void
+unfollow_window (config_t *config, status_t *status)
+{
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
+    
+    WINDOW *local_win = NULL;
+    local_win = newwin(6, 40, 2, (x/2)-20);
+    keypad(local_win, TRUE);
+    box(local_win, 0, 0);
+    mvwprintw(local_win, 0, 2, "UnFollow this guy ! (ESC to abord)");
+
+    mvwprintw(local_win, 2, 5, "UnFollow %s ?", status->pseudo);
+    mvwprintw(local_win, 3, 5, "(y)es, (n)o, (s)omeone else");
+    wrefresh(local_win);
+
+    int ch;
+    if(ch = wgetch(local_win) == 'y') {
+        post_unfollow(status->pseudo, config);
+    } else if (ch = wgetch(local_win) == 's') {
+        wclear(local_win);
+        box(local_win, 0, 0);
+        FIELD *follow[1];
+        FORM  *my_form      = NULL;
+        follow[0] = new_field(1, 20, 1, 5, 0, 0);
+        follow[1] = NULL;
+        set_field_back(follow[0], A_UNDERLINE);
+        my_form = new_form(follow);
+        //wrefresh(window_tweet);
+
+
+	    /* Set main window and sub window */
+        set_form_win(my_form, local_win);
+        set_form_sub(my_form, derwin(local_win, 4, 40, 2, 2));
+    
+        post_form(my_form);
+        wrefresh(local_win);
+        curs_set(1);
+        form_driver(my_form, REQ_BEG_FIELD);
+        int quit = 0;
+
+        /*  navigation menu of    ***  send_tweet_window  ***
+        *  fill up the field, and confirmation to send the tweet
+        */
+	    while((ch = wgetch(local_win)) != 27) {
+            switch(ch) {
+
+                case KEY_LEFT:
+                    form_driver(my_form, REQ_PREV_CHAR);
+                    break;
+                case KEY_RIGHT:
+                    form_driver(my_form, REQ_NEXT_CHAR);
+                    break;
+			    case 127: /* Backspace */
+				    form_driver(my_form, REQ_PREV_CHAR);
+				    form_driver(my_form, REQ_DEL_CHAR);
+				    break;
+                case 330: /* Suppr. */
+                    form_driver(my_form, REQ_DEL_CHAR);
+                    break;
+                case 10: /* Enter */
+                    mvwprintw (local_win, 3, 10, "Follow him ? (y)es (n)o");
+                    int chr;
+                    chr = wgetch(local_win);
+                    switch(chr) {
+                        case 'y': {
+                            char *follow_send = NULL;
+                            char *formbuff = NULL;
+                            form_driver(my_form, REQ_VALIDATION);
+                            formbuff = field_buffer(follow[0], 0);
+                            follow_send = strndup(formbuff, 140);
+                            post_unfollow(follow_send, config);
+                            quit = 1;
+                            break;
+                        }   
+                        case 'n':
+                            mvwprintw (local_win, 4, 10, "                           ");
+                            form_driver(my_form, REQ_END_FIELD);
+                            break;
+                    }
+                    break;
+			    default:
+				    /* If this is a normal character, it gets printed   */
+				    form_driver(my_form, ch);
+				    break;
+		    }
+        wrefresh(local_win);
+        if (quit == 1)
+            break;
+	    }
+        unpost_form(my_form);
+         //free_form(my_form);
+        free_field(follow[0]);
+    } 
+
+    curs_set(0);
+
+    wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wclear(local_win);
+    wrefresh(local_win);
+    delwin(local_win);
 }

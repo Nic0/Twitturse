@@ -11,4 +11,10 @@ post_status (char *tweet, config_t *config);
 
 void
 post_retweet (char *tweet, config_t *config, status_t *retweet_status);
+
+void 
+post_follow (char *follow, config_t *config);
+
+void 
+unfollow (char *follow, config_t *config);
 #endif
