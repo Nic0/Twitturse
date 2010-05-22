@@ -138,3 +138,23 @@ printStatuses (statuses_t *statuses)
             break;
     }
 }
+
+void
+clear_statuses (data_t *data)
+{
+    pthread_mutex_lock(&mutex);
+    status_t *current_status = NULL;
+    current_status = initStatus(current_status);
+    *current_status = *(data->statuses->last);
+
+    while (data->statuses->count != 1)
+    {   
+        current_status = current_status->prev;
+        //free(current_status->next);
+        current_status->next = NULL;
+        data->statuses->count--;
+        data->statuses->last = current_status;
+    }
+
+    pthread_mutex_unlock(&mutex);
+}

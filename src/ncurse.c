@@ -97,6 +97,15 @@ ncurseApplication (void *arg)
                    /* menu_driver(window_status->menu, REQ_UP_ITEM);
                     menu_driver(window_status->menu, REQ_DOWN_ITEM);*/
                     break;
+                case 'c':   /*  c = clear   */
+                    clear_statuses (window_status->data);
+                    window_status->refresh = 1;
+                    clear();
+                    break;
+                case 'h':   /*  h = help menu   */
+                    help_window();
+                    window_status->refresh = 1;
+                    break;
                 }
                     
 		    }
@@ -260,6 +269,7 @@ detail_status_window (status_t *display_status)
     getchar();
 
     wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wclear(local_win);
     wrefresh(local_win);
     delwin(local_win);
 }
@@ -356,8 +366,9 @@ refresh_status_window (void *arg)
 
         menu_driver(window_status->menu, REQ_LAST_ITEM);
             int was_last=0;
-        if (cur_id == current_item(window_status->menu))
-            was_last = 1;
+            //We don't want move down if it's the last status anymore
+        /*if (cur_id == current_item(window_status->menu))
+            was_last = 1;*/
 
 
 		unpost_menu(window_status->menu);
@@ -412,7 +423,7 @@ refresh_status_window (void *arg)
 		    ITEM *cur;
 		    cur = current_item(window_status->menu);
 		    status_t *status = item_userptr(cur);
-		    if ((strcmp (status->id, status_id->id)) != 0 && was_last == 0)
+		    if ((strcmp (status->id, status_id->id)) != 0)
 		        menu_driver(window_status->menu, REQ_UP_ITEM);
 		    else
 		        break;
@@ -452,4 +463,32 @@ retweet_window (window_status_t *window_status, status_t *retweet_status)
             break;
     }
     window_status->refresh = 1;
+}
+
+void
+help_window (void)
+{
+    WINDOW *local_win = NULL;
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
+    local_win = newwin(y-2, x-2, 0, 0);
+    box(local_win, 0, 0);
+
+
+    mvwprintw(local_win, 1, 20, "Help Menu:");
+    mvwprintw(local_win, 3, 10, "t : tweet");
+    mvwprintw(local_win, 4, 10, "r : retweet");
+    mvwprintw(local_win, 5, 10, "c : clear all tweets");
+    mvwprintw(local_win, 6, 10, "f : follow someone");
+    mvwprintw(local_win, 7, 10, "u : unfollow someone");
+    mvwprintw(local_win, 8, 10, "h : show this help menu");
+    mvwprintw(local_win, 9, 10, "space/enter : view the current tweet");
+
+    wgetch(local_win);
+
+    wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wclear(local_win);
+    wrefresh(local_win);
+    delwin(local_win);
 }
