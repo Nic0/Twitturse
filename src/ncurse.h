@@ -40,4 +40,7 @@ help_window (void);
 void
 follow_window(config_t *config);
 
+void 
+unfollow_window(config_t *config, status_t *status);
+
 #endif

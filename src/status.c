@@ -119,7 +119,7 @@ pthread_mutex_unlock(&mutex);
     xmlXPathFreeContext(xpathCtx);
     xmlFreeDoc(xmldoc);
     //printStatuses(data->statuses);
-    sleep(60);
+    sleep(data->config->refresh);
     }
 }
 

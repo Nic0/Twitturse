@@ -6,6 +6,7 @@ typedef struct
     char *path_config;
     char *login;
     char *passwd;
+    int refresh;
 } config_t;
 
 int
