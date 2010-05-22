@@ -106,6 +106,10 @@ ncurseApplication (void *arg)
                     help_window();
                     window_status->refresh = 1;
                     break;
+                case 'f':
+                    follow_window(window_status->data->config);
+                    window_status->refresh = 1;
+                    break;
                 }
                     
 		    }
@@ -486,6 +490,102 @@ help_window (void)
     mvwprintw(local_win, 9, 10, "space/enter : view the current tweet");
 
     wgetch(local_win);
+
+    wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    wclear(local_win);
+    wrefresh(local_win);
+    delwin(local_win);
+}
+
+void
+follow_window(config_t *config)
+{
+    int x = 0;
+    int y = 0;
+    getmaxyx(stdscr, y, x);
+    
+    
+    FIELD *follow[1];
+    FORM  *my_form      = NULL;
+    int ch;
+
+    follow[0] = new_field(1, 20, 1, 5, 0, 0);
+    follow[1] = NULL;
+    set_field_back(follow[0], A_UNDERLINE);
+    my_form = new_form(follow);
+
+    WINDOW *local_win = NULL;
+    local_win = newwin(4, 40, 2, (x/2)-20);
+    keypad(local_win, TRUE);
+    //wrefresh(window_tweet);
+
+
+	/* Set main window and sub window */
+    set_form_win(my_form, local_win);
+    set_form_sub(my_form, derwin(local_win, 4, 40, 2, 2));
+    
+    post_form(my_form);
+    box(local_win, 0, 0);
+    mvwprintw(local_win, 0, 2, "Follow this fella ! (ESC to abord)");
+    wrefresh(local_win);
+    curs_set(1);
+    form_driver(my_form, REQ_BEG_FIELD);
+    int quit = 0;
+
+    /*  navigation menu of    ***  send_tweet_window  ***
+     *  fill up the field, and confirmation to send the tweet
+     */
+	while((ch = wgetch(local_win)) != 27) {
+        switch(ch) {
+
+            case KEY_LEFT:
+                form_driver(my_form, REQ_PREV_CHAR);
+                break;
+            case KEY_RIGHT:
+                form_driver(my_form, REQ_NEXT_CHAR);
+                break;
+			case 127: /* Backspace */
+				form_driver(my_form, REQ_PREV_CHAR);
+				form_driver(my_form, REQ_DEL_CHAR);
+				break;
+            case 330: /* Suppr. */
+                form_driver(my_form, REQ_DEL_CHAR);
+                break;
+            case 10: /* Enter */
+                mvwprintw (local_win, 3, 10, "Follow him ? (y)es (n)o");
+                int chr;
+                chr = wgetch(local_win);
+                switch(chr) {
+                    case 'y': {
+                        char *follow_send = NULL;
+                        char *formbuff = NULL;
+                        form_driver(my_form, REQ_VALIDATION);
+                        formbuff = field_buffer(follow[0], 0);
+                        follow_send = strndup(formbuff, 140);
+                        post_follow(follow_send, config);
+                        quit = 1;
+                        break;
+                    }
+                    case 'n':
+                        mvwprintw (local_win, 4, 10, "                           ");
+                        form_driver(my_form, REQ_END_FIELD);
+                        break;
+                }
+                break;
+			default:
+				/* If this is a normal character, it gets printed   */
+				form_driver(my_form, ch);
+				break;
+		}
+        wrefresh(local_win);
+        if (quit == 1)
+            break;
+	}
+    unpost_form(my_form);
+    //free_form(my_form);
+    free_field(follow[0]);
+
+    curs_set(0);
 
     wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
     wclear(local_win);

@@ -141,3 +141,53 @@ post_retweet (char *tweet, config_t *config, status_t *retweet_status)
         curl_slist_free_all (headerlist);
     }
 }
+
+void 
+post_follow(char *follow, config_t *config)
+{
+    CURL *curl = NULL;
+    CURLcode res;
+    struct curl_httppost *formpost=NULL;
+    struct curl_httppost *lastptr=NULL;
+    struct curl_slist *headerlist=NULL;
+    static const char buf[] = "Expect:";
+ 
+    curl_global_init(CURL_GLOBAL_ALL);
+
+    char tmpfollow[100] = {0};
+    int i = 0;
+    while (follow[i] != ' ') {
+        tmpfollow[i] = follow[i];
+        i++;
+    }
+
+    char *rt_url = NULL;
+    rt_url = strdup("http://api.twitter.com/1/friendships/create/");
+    rt_url = cat_chaine (rt_url, tmpfollow);
+    rt_url = cat_chaine (rt_url, ".xml");
+
+    curl = curl_easy_init();
+    
+    curl_formadd(&formpost,
+                 &lastptr,
+                 CURLFORM_COPYNAME, "",
+                 CURLFORM_COPYCONTENTS,
+                 CURLFORM_END);
+  /* initalize custom header list (stating that Expect: 100-continue is not
+     wanted */ 
+    headerlist = curl_slist_append(headerlist, buf);
+    if(curl) {
+        curl_easy_setopt (curl, CURLOPT_URL, rt_url);
+        curl_easy_setopt (curl, CURLOPT_USERNAME, config->login);
+        curl_easy_setopt (curl, CURLOPT_PASSWORD, config->passwd);
+      /* only disable 100-continue header if explicitly requested */ 
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
+        curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+        res = curl_easy_perform(curl);
+ 
+        curl_easy_cleanup(curl);
+        curl_formfree(formpost);
+        curl_slist_free_all (headerlist);
+    }
+}
+
